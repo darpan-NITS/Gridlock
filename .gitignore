@@ -1,0 +1,14 @@
+# Python environment and caching
+venv/
+.venv/
+__pycache__/
+.streamlit/
+
+# Node environment dependencies 
+node_modules/
+dist/
+.env
+
+# Large data file bans
+*.csv
+*.ipynb
