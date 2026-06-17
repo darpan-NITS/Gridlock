@@ -1,11 +1,20 @@
 /* ────────────────────────────────────────────────────
    GRIDLOCK — COMMAND CENTER THEME
-   Day 2 stylesheet
    ──────────────────────────────────────────────────── */
 
 /* Global base */
-html, body, [class*="css"] {
-    font-family: "Inter", "Segoe UI", sans-serif;
+/* Change the main app background */
+.stApp, .main, div[data-testid="stAppViewContainer"] {
+    background: radial-gradient(circle at top left, #E4580B, #114AB1)!important;
+    color: #e2e8f0;
+}
+
+
+
+
+/* Optional: Ensure the header area matches the new background */
+[data-testid="stHeader"] {
+    background-color: rgba(0, 0, 0, 0) !important; /* Makes header transparent so the blue shows through */
 }
 
 /* Remove default Streamlit padding at top */
@@ -17,10 +26,10 @@ html, body, [class*="css"] {
 
 /* ── Sidebar ───────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: #0f172a !important;
+    background: #060323 !important;
 }
 [data-testid="stSidebar"] * {
-    color: #e2e8f0 !important;
+    color: #959697 !important;
 }
 [data-testid="stSidebar"] .stSelectbox label,
 [data-testid="stSidebar"] .stSlider label,
@@ -30,258 +39,33 @@ html, body, [class*="css"] {
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
-[data-testid="stSidebar"] .stFormSubmitButton > button {
-    background: #3b82f6 !important;
-    color: #fff !important;
-    border: none !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-    font-size: 14px !important;
-    padding: 0.5rem 1rem !important;
-    transition: background 0.2s;
-}
-[data-testid="stSidebar"] .stFormSubmitButton > button:hover {
-    background: #2563eb !important;
+
+/* ── UI Cards & KPIs (Merged & Synced) ──────────────── */
+.ui-card {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 20px !important;
+    padding: 24px !important;
+    margin-bottom: 20px !important;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25) !important;
+    color: #e2e8f0;
 }
 
-/* ── Top header bar ────────────────────────────────── */
-.top-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-.header-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: #111827;
-    letter-spacing: -0.5px;
-}
-.header-sub {
-    font-size: 14px;
-    color: #6b7280;
-    margin-top: 2px;
-}
-.header-live {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #22c55e;
-    letter-spacing: 0.08em;
-}
-.live-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #22c55e;
-    animation: pulse 1.5s ease-in-out infinite;
-}
-@keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.5; transform: scale(0.75); }
-}
 
-/* ── KPI Cards ─────────────────────────────────────── */
-.kpi-card {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 14px 16px;
-    text-align: center;
-}
 .kpi-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #6b7280;
-    margin-bottom: 6px;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: #060606 !important;
+    margin-bottom: 6px !important;
 }
+
 .kpi-value {
-    font-size: 26px;
-    font-weight: 700;
-    color: #111827;
-    line-height: 1;
-}
-
-/* ── Section label ─────────────────────────────────── */
-.section-label {
-    font-size: 13px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #374151;
-    margin-bottom: 10px;
-    padding-bottom: 6px;
-    border-bottom: 2px solid #e5e7eb;
-}
-
-/* ── Incident cards ────────────────────────────────── */
-.incident-card {
-    background: #ffffff;
-    border-radius: 10px;
-    border: 1px solid #e5e7eb;
-    padding: 12px 14px;
-    margin-bottom: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-}
-.inc-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
-    flex-wrap: wrap;
-}
-.inc-id {
-    font-size: 11px;
-    font-weight: 700;
-    color: #6b7280;
-}
-.inc-cause {
-    font-size: 13px;
-    font-weight: 600;
-    color: #111827;
-}
-.inc-time {
-    margin-left: auto;
-    font-size: 11px;
-    color: #9ca3af;
-    font-weight: 500;
-}
-.inc-junction {
-    font-size: 12px;
-    color: #374151;
-    margin-bottom: 5px;
-}
-.inc-reasoning {
-    font-size: 11.5px;
-    color: #4b5563;
-    background: #f0f9ff;
-    border-left: 3px solid #3b82f6;
-    padding: 6px 10px;
-    border-radius: 0 6px 6px 0;
-    margin-bottom: 7px;
-    line-height: 1.5;
-}
-.inc-resources {
-    font-size: 12px;
-    color: #374151;
-    margin-bottom: 5px;
-}
-.deploy-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-bottom: 5px;
-}
-.deploy-tag {
-    font-size: 11px;
-    background: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
-    border-radius: 4px;
-    padding: 2px 7px;
-}
-.diversion-note {
-    font-size: 11.5px;
-    color: #2563eb;
-    font-weight: 500;
-}
-
-/* ── Severity badges ───────────────────────────────── */
-.badge {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 2px 7px;
-    border-radius: 4px;
-}
-.badge-critical {
-    background: #fee2e2;
-    color: #b91c1c;
-    border: 1px solid #fca5a5;
-}
-.badge-moderate {
-    background: #fef9c3;
-    color: #92400e;
-    border: 1px solid #fde68a;
-}
-.badge-low {
-    background: #dcfce7;
-    color: #166534;
-    border: 1px solid #bbf7d0;
-}
-
-/* ── What-If card (sidebar) ────────────────────────── */
-.whatif-card {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin-top: 8px;
-}
-.whatif-header {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #94a3b8;
-    margin-bottom: 6px;
-}
-.whatif-score {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 6px;
-}
-.whatif-detail {
-    font-size: 11.5px;
-    color: #cbd5e1;
-    margin-bottom: 3px;
-}
-
-/* ── What-If comparison (action plan) ─────────────── */
-.whatif-compare {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 7px;
-    padding: 8px 12px;
-    font-size: 13px;
-    color: #374151;
-    margin-top: 6px;
-}
-
-/* ── Empty state ───────────────────────────────────── */
-.empty-feed {
-    color: #9ca3af;
-    font-size: 13px;
-    text-align: center;
-    padding: 2rem 1rem;
-    border: 1.5px dashed #e5e7eb;
-    border-radius: 10px;
-}
-
-/* ── Footer ────────────────────────────────────────── */
-.footer {
-    text-align: center;
-    font-size: 11px;
-    color: #9ca3af;
-    padding-top: 1rem;
-    border-top: 1px solid #f3f4f6;
-    margin-top: 0.5rem;
-}
-
-/* ── Streamlit component tweaks ────────────────────── */
-[data-testid="stMetricValue"] {
-    font-size: 20px !important;
-}
-div[data-testid="stForm"] {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
+    font-size: 2.2rem !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    line-height: 1.1 !important;
+    margin-top: 5px !important;
 }
