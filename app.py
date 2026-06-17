@@ -1,18 +1,31 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
+import math
+from datetime import datetime
+from pathlib import Path
+
 import folium
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import streamlit as st
 from folium.plugins import HeatMap
 from streamlit_folium import st_folium
-from datetime import datetime
-import plotly.graph_objects as go
 
-from utils.data_processor import load_and_clean_data, engineer_features, compute_kpi_stats
+from utils.data_processor import engineer_features, compute_kpi_stats, load_and_clean_data
 from utils.models import (
-    compute_junction_history, congestion_score, manpower_engine,
-    process_kmeans_centers, generate_reasoning_text,
-    get_junction_coords, get_diversion_route, whatif_score,
-    compute_corridor_risk
+    build_explainability_points,
+    build_incident_timeline,
+    compute_corridor_risk,
+    compute_corridor_vulnerability,
+    compute_junction_history,
+    forecast_traffic_impact,
+    generate_reasoning_text,  # <-- Added this missing import
+    get_diversion_route,
+    get_junction_coords,
+    manpower_engine,
+    process_kmeans_centers,
+    resource_optimization,
+    scenario_delta,
+    whatif_score,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -22,552 +35,366 @@ st.set_page_config(
     page_title="Gridlock — Traffic Command Center",
     page_icon="🚦",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-with open("assets/custom.css") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+# Load Custom CSS if available
+css_path = Path("assets/custom.css")
+if css_path.exists():
+    with css_path.open("r", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+else:
+    # Embedded fallback styling for an elegant, modern cyber-dark control room theme
+    st.markdown("""
+        <style>
+        .main { background-color: #0b0f19; color: #f1f5f9; }
+        .stMetric { background: rgba(30, 41, 59, 0.4); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+        div[data-testid="stSidebar"] { background-color: #0f172a; }
+        h1, h2, h3 { color: #f8fafc; font-weight: 700; }
+        </style>
+    """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DATA PIPELINE
+# HELPERS & CACHING
 # ─────────────────────────────────────────────────────────────────────────────
-@st.cache_data
-def run_backend_pipeline():
-    try:
-        df = load_and_clean_data(
-            "Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv"
-        )
-    except Exception:
-        rng = np.random.default_rng(42)
-        n = 300
-        junctions = [
-            "Silk Board Junction", "Urvashi Junction", "LalbaghMainGateJunc",
-            "Hebbal Flyover", "Marathahalli Junction", "KR Circle",
-            "MG Road Junction", "Koramangala Junction", "Yeshwanthpur Junction",
-            "Whitefield Signal", "Electronic City Toll", "Unknown"
-        ]
-        corridors = [
-            "Tumkur Road", "ORR East 1", "Hosur Road", "Bannerghatta Road",
-            "Old Airport Road", "Bellary Road", "Non-corridor"
-        ]
-        causes = [
-            "vehicle_breakdown", "accident", "vip_movement", "water_logging",
-            "procession", "protest", "public_event", "construction", "congestion"
-        ]
-        durations = rng.exponential(scale=90, size=n).clip(10, 600)
-        start = pd.date_range("2024-01-01", periods=n, freq="3h")
-        df = pd.DataFrame({
-            "event_type":    rng.choice(["unplanned", "planned"], n, p=[0.75, 0.25]),
-            "start_datetime": start,
-            "end_datetime":  start + pd.to_timedelta(durations, unit="m"),
-            "latitude":      rng.uniform(12.85, 13.10, n),
-            "longitude":     rng.uniform(77.50, 77.75, n),
-            "junction":      rng.choice(junctions, n),
-            "corridor":      rng.choice(corridors, n),
-            "event_cause":   rng.choice(causes, n),
-            "priority":      rng.choice(["P1", "P2", "P3"], n),
-            "requires_road_closure": rng.choice([True, False], n, p=[0.35, 0.65]),
-            "status":        rng.choice(["resolved", "active", "pending"], n, p=[0.70, 0.15, 0.15]),
-        })
-
-    df = engineer_features(df)
-    j_history  = compute_junction_history(df)
-    kpi        = compute_kpi_stats(df)
-    centers    = process_kmeans_centers(df, k=10)
-    corr_risk  = compute_corridor_risk(df)
-    return df, j_history, kpi, centers, corr_risk
-
-df, junction_history, kpi_stats, cluster_centers, corridor_risk = run_backend_pipeline()
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SESSION STATE
-# ─────────────────────────────────────────────────────────────────────────────
-if "incidents" not in st.session_state:
-    st.session_state.incidents = []
-if "last_incident" not in st.session_state:
-    st.session_state.last_incident = None
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SIDEBAR — INCIDENT FORM
-# ─────────────────────────────────────────────────────────────────────────────
-st.sidebar.markdown("## 🚨 Incident Entry")
-st.sidebar.markdown("---")
-
-with st.sidebar.form("incident_form"):
-    event_cause_input = st.selectbox(
-        "Event Cause",
-        ["vehicle_breakdown", "accident", "vip_movement", "water_logging",
-         "procession", "protest", "public_event", "construction", "congestion"],
-        help="Primary cause of the traffic event"
-    )
-    event_type_input = st.selectbox(
-        "Event Type",
-        ["unplanned", "planned"],
-    )
-    junction_input = st.selectbox(
-        "Junction",
-        sorted(df["junction"].unique()),
-    )
-    corridor_input = st.selectbox(
-        "Corridor",
-        sorted(df["corridor"].dropna().unique()),
-    )
-    input_hour = st.slider("Hour of Day", 0, 23, datetime.now().hour)
-    requires_closure = st.checkbox("Requires Road Closure")
-    submit_btn = st.form_submit_button("⚡ Analyse & Deploy Plan", use_container_width=True)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("## 🔬 What-If Simulator")
-st.sidebar.caption("Adjust parameters to preview impact without submitting")
-
-wi_crowd   = st.sidebar.select_slider(
-    "Crowd Scale", options=["Small", "Medium", "Large", "Mega"], value="Medium"
-)
-wi_hour    = st.sidebar.slider("Simulated Hour", 0, 23, 12)
-wi_closure = st.sidebar.checkbox("Assume Road Closure", value=False)
-
-# Live what-if recompute (uses last submitted incident's cause+junction as base)
-wi_base_cause    = st.session_state.last_incident["cause"] if st.session_state.last_incident else "vehicle_breakdown"
-wi_base_junction = st.session_state.last_incident["junction"] if st.session_state.last_incident else junction_input
-wi_base_type     = st.session_state.last_incident["event_type"] if st.session_state.last_incident else "unplanned"
-
-wi_severity = whatif_score(
-    wi_base_cause, wi_base_type, wi_hour,
-    wi_base_junction, junction_history, wi_crowd, wi_closure
-)
-wi_resources = manpower_engine(wi_severity, wi_base_type, wi_base_junction, corridor_input)
-
 SEVERITY_COLORS = {
-    "Critical":  "#ef4444",
-    "Moderate":  "#f59e0b",
-    "Low":       "#22c55e",
+    "Critical": "#ef4444",
+    "Moderate": "#f59e0b",
+    "Low": "#22c55e",
 }
 
-def severity_label(s):
-    if s >= 7: return "Critical"
-    if s >= 4: return "Moderate"
+def fmt_minutes(value: float) -> str:
+    if value is None or pd.isna(value):
+        return "—"
+    return f"{float(value):.0f} min"
+
+def fmt_km(value: float) -> str:
+    if value is None or pd.isna(value):
+        return "—"
+    return f"{float(value):.2f} km"
+
+def severity_label(score: int) -> str:
+    if score >= 7: return "Critical"
+    elif score >= 4: return "Moderate"
     return "Low"
 
-wi_label = severity_label(wi_severity)
-wi_color = SEVERITY_COLORS[wi_label]
-st.sidebar.markdown(
-    f"""
-    <div class="whatif-card">
-        <div class="whatif-header">Simulated Impact</div>
-        <div class="whatif-score" style="color:{wi_color};">
-            {wi_severity}/10 — {wi_label}
+def severity_band(score: int) -> str:
+    return severity_label(score)
+
+def safe_top_corridor_score(vuln_df: pd.DataFrame, corridor: str) -> float:
+    if vuln_df is None or vuln_df.empty:
+        return 0.0
+    match = vuln_df[vuln_df["corridor"].astype(str).str.lower() == str(corridor).lower()]
+    if match.empty:
+        return 0.0
+    return float(match.iloc[0]["vulnerability_score"])
+
+def render_plan_card(title: str, plan: dict, accent: str) -> None:
+    """Renders sleek operational metrics blocks directly into the DOM."""
+    st.markdown(
+        f"""
+        <div style="
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-left: 4px solid {accent};
+            border-radius: 14px;
+            padding: 16px;
+            min-height: 200px;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+            margin-bottom: 15px;
+         border-top-right-radius: 4px;
+         border-bottom-right-radius: 4px;
+        ">
+            <h4 style="color: {accent}; margin-top: 0; margin-bottom: 6px; font-size:1.15rem;">{title}</h4>
+            <p style="font-size: 0.85rem; font-style: italic; color: #94a3b8; margin-bottom: 14px;">{plan['tone']}</p>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9rem;">
+                <span style="color: #cbd5e1;">Personnel Wave:</span>
+                <b style="color: #ffffff;">🛟 {plan['officers']} Officers</b>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9rem;">
+                <span style="color: #cbd5e1;">Barricades Needed:</span>
+                <b style="color: #ffffff;">🚧 {plan['barricades']} Units</b>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9rem;">
+                <span style="color: #cbd5e1;">Est. Recovery Curve:</span>
+                <b style="color: #ffffff;">⏱️ {plan['expected_recovery_min']:.0f} min</b>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                <span style="color: #cbd5e1;">Target Residual Delay:</span>
+                <b style="color: #ffffff;">📉 {plan['delay_effect']:.0f} min</b>
+            </div>
         </div>
-        <div class="whatif-detail">
-            👮 {wi_resources['personnel']} officers &nbsp;|&nbsp;
-            🚧 {wi_resources['barricades']} barricades
-        </div>
-        <div class="whatif-detail">
-            📍 Crowd: {wi_crowd} &nbsp;|&nbsp;
-            ⏰ Hour: {wi_hour:02d}:00
-        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+@st.cache_data(show_spinner="Analyzing regional historic baselines...")
+def get_cached_pipeline_data():
+    """Loads historical dataset; falls back to simulated structure if file missing."""
+    try:
+        df = load_and_clean_data()
+        if df is None or df.empty:
+            raise ValueError("Empty Dataset")
+        df = engineer_features(df)
+    except Exception:
+        # High-fidelity synthesis tracking Bengaluru traffic behavior profiles
+        np.random.seed(42)
+        rows = []
+        corridors = ["Tumkur Road", "ORR East 1", "Hosur Road", "Bannerghatta Road", "Old Airport Road", "Bellary Road"]
+        junctions = ["Silk Board Junction", "Urvashi Junction", "Lalbagh Main Gate", "Hebbal Flyover", "Marathahalli Junction"]
+        causes = ["vip_movement", "accident", "protest", "construction", "water_logging", "congestion"]
+        
+        for _ in range(200):
+            corr = np.random.choice(corridors)
+            junc = np.random.choice(junctions)
+            cause = np.random.choice(causes)
+            dur = float(np.random.exponential(scale=45) + 20)
+            rows.append({
+                "corridor": corr,
+                "junction": junc,
+                "event_cause": cause,
+                "event_cause_category": cause.upper(),
+                "duration_minutes": dur,
+                "hour_of_day": np.random.randint(0, 24),
+                "requires_road_closure": np.random.choice([True, False], p=[0.15, 0.85]),
+                "latitude": get_junction_coords(junc)[0] + np.random.uniform(-0.01, 0.01),
+                "longitude": get_junction_coords(junc)[1] + np.random.uniform(-0.01, 0.01)
+            })
+        df = pd.DataFrame(rows)
+    
+    junc_hist = compute_junction_history(df)
+    corr_vuln = compute_corridor_vulnerability(df)
+    return df, junc_hist, corr_vuln
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CORE DATA INITIALIZATION
+# ─────────────────────────────────────────────────────────────────────────────
+df_clean, junction_history, corridor_vulnerability = get_cached_pipeline_data()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HEADER ARCHITECTURE
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("""
+    <div style="background: linear-gradient(90deg, #1e1b4b 0%, #0f172a 100%); padding: 20px; border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.2); margin-bottom: 25px;">
+        <h1 style="margin: 0; font-size: 2.2rem; background: linear-gradient(to right, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">GRIDLOCK: Predictive Incident Command</h1>
+        <p style="margin: 5px 0 0 0; color: #94a3b8; font-size: 1rem;">Real-time resource provisioning, spatial telemetry, and mitigation forecasting for Bengaluru Metropolitan Corridors.</p>
     </div>
-    """,
-    unsafe_allow_html=True,
+""", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SIDEBAR PARAMETRIC CONTROLS
+# ─────────────────────────────────────────────────────────────────────────────
+st.sidebar.image("https://img.icons8.com/nolan/96/traffic-light.png", width=70)
+st.sidebar.markdown("### 🛠️ Incident Configuration")
+
+# Dynamic mappings from known telemetry lists
+known_junctions = [k for k in get_junction_coords.__globals__['JUNCTION_COORDS'].keys() if k != "Unknown"]
+known_corridors = [k for k in get_diversion_route.__globals__['DIVERSION_ROUTES'].keys() if k != "Non-corridor"]
+
+selected_junction = st.sidebar.selectbox("Target Intersection", options=known_junctions)
+selected_corridor = st.sidebar.selectbox("Impact Corridor Line", options=known_corridors)
+
+event_cause = st.sidebar.selectbox(
+    "Primary Incident Vector", 
+    options=["vip_movement", "accident", "protest", "procession", "construction", "water_logging", "congestion", "vehicle_breakdown"]
+)
+event_type = st.sidebar.radio("Deployment Categorization", options=["Spontaneous", "Planned"], horizontal=True)
+
+current_hour = st.sidebar.slider("Timeline Execution Window (Hour)", min_value=0, max_value=23, value=datetime.now().hour)
+crowd_scale = st.sidebar.select_slider("Crowd/Density Volume Profile", options=["Small", "Medium", "Large", "Mega"], value="Medium")
+base_duration = st.sidebar.number_input("Expected Active Event Baseline (Mins)", min_value=5, max_value=480, value=60, step=5)
+requires_closure = st.sidebar.toggle("Enforce Physical Corridor Road Closure", value=False)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# COMPUTATION ENGINE LAUNCH
+# ─────────────────────────────────────────────────────────────────────────────
+forecast = forecast_traffic_impact(
+    event_type=event_type,
+    event_cause=event_cause,
+    hour=current_hour,
+    junction=selected_junction,
+    corridor=selected_corridor,
+    crowd_scale=crowd_scale,
+    event_duration_min=base_duration,
+    requires_closure=requires_closure,
+    junction_history=junction_history,
+    corridor_vulnerability=corridor_vulnerability,
+    dataset=df_clean
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PROCESS FORM SUBMISSION
-# ─────────────────────────────────────────────────────────────────────────────
-if submit_btn:
-    severity = congestion_score(
-        event_type_input, event_cause_input,
-        input_hour, junction_input, junction_history
-    )
-    resources = manpower_engine(severity, event_type_input, junction_input, corridor_input)
-    reasoning = generate_reasoning_text(
-        event_cause_input, junction_input, input_hour, severity, junction_history
-    )
-    coords = get_junction_coords(junction_input)
-    route  = get_diversion_route(corridor_input)
-
-    incident = {
-        "id":           len(st.session_state.incidents) + 1,
-        "time":         datetime.now().strftime("%H:%M"),
-        "cause":        event_cause_input,
-        "event_type":   event_type_input,
-        "junction":     junction_input,
-        "corridor":     corridor_input,
-        "hour":         input_hour,
-        "severity":     severity,
-        "label":        severity_label(severity),
-        "resources":    resources,
-        "reasoning":    reasoning,
-        "coords":       coords,
-        "route":        route,
-        "requires_closure": requires_closure,
-        "status":       "Active",
-    }
-    st.session_state.incidents.insert(0, incident)
-    st.session_state.last_incident = incident
+severity_num = forecast["severity"]
+label = severity_band(severity_num)
+accent_color = SEVERITY_COLORS[label]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HEADER
+# MAIN PANEL DISPLAY LAYER
 # ─────────────────────────────────────────────────────────────────────────────
-st.markdown(
-    """
-    <div class="top-header">
-        <span class="header-title">🚦 Gridlock</span>
-        <span class="header-sub">Bengaluru Traffic Command Center</span>
-        <span class="header-live"><span class="live-dot"></span> LIVE</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# Row 1: High-Density KPIs
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# KPI STRIP
-# ─────────────────────────────────────────────────────────────────────────────
-active_now      = len([i for i in st.session_state.incidents if i["status"] == "Active"])
-high_risk_corrs = sum(1 for v in corridor_risk.values() if v > 120)
+with kpi1:
+    st.markdown(f"""
+        <div class="stMetric">
+            <span style='color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;'>Threat Profile Index</span>
+            <h2 style='color: {accent_color}; margin: 5px 0 0 0; font-size: 2.2rem;'>{severity_num} <span style='font-size:1.1rem;'>/ 10</span></h2>
+            <p style='color: {accent_color}; margin: 2px 0 0 0; font-size: 0.85rem; font-weight: 700;'>⚡ Status: {label}</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-k1, k2, k3, k4, k5 = st.columns(5)
-with k1:
-    st.markdown(
-        f'<div class="kpi-card"><div class="kpi-label">Active Incidents</div>'
-        f'<div class="kpi-value" style="color:#ef4444;">{active_now}</div></div>',
-        unsafe_allow_html=True,
-    )
-with k2:
-    st.markdown(
-        f'<div class="kpi-card"><div class="kpi-label">Avg Resolution</div>'
-        f'<div class="kpi-value">{kpi_stats["avg_resolution_min"]:.0f} min</div></div>',
-        unsafe_allow_html=True,
-    )
-with k3:
-    st.markdown(
-        f'<div class="kpi-card"><div class="kpi-label">High-Risk Corridors</div>'
-        f'<div class="kpi-value" style="color:#f59e0b;">{high_risk_corrs}</div></div>',
-        unsafe_allow_html=True,
-    )
-with k4:
-    st.markdown(
-        f'<div class="kpi-card"><div class="kpi-label">Historical Events</div>'
-        f'<div class="kpi-value">{kpi_stats["total_events"]:,}</div></div>',
-        unsafe_allow_html=True,
-    )
-with k5:
-    st.markdown(
-        f'<div class="kpi-card"><div class="kpi-label">Road Closure Rate</div>'
-        f'<div class="kpi-value">{kpi_stats["closure_rate"]:.0f}%</div></div>',
-        unsafe_allow_html=True,
-    )
+with kpi2:
+    st.markdown(f"""
+        <div class="stMetric">
+            <span style='color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;'>Est. Backlog Delay</span>
+            <h2 style='color: #f8fafc; margin: 5px 0 0 0; font-size: 2.2rem;'>{fmt_minutes(forecast['expected_delay_min'])}</h2>
+            <p style='color: #38bdf8; margin: 2px 0 0 0; font-size: 0.85rem;'>Queue Propagation Vector</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
+with kpi3:
+    st.markdown(f"""
+        <div class="stMetric">
+            <span style='color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;'>Shockwave Radius</span>
+            <h2 style='color: #f8fafc; margin: 5px 0 0 0; font-size: 2.2rem;'>{fmt_km(forecast['affected_radius_km'])}</h2>
+            <p style='color: #a78bfa; margin: 2px 0 0 0; font-size: 0.85rem;'>Spatial Spillover Horizon</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# MAIN LAYOUT — MAP  |  INCIDENT FEED
-# ─────────────────────────────────────────────────────────────────────────────
-col_map, col_feed = st.columns([6, 4], gap="medium")
+with kpi4:
+    st.markdown(f"""
+        <div class="stMetric">
+            <span style='color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;'>Total System Clearance</span>
+            <h2 style='color: #f8fafc; margin: 5px 0 0 0; font-size: 2.2rem;'>{fmt_minutes(forecast['estimated_recovery_min'])}</h2>
+            <p style='color: #22c55e; margin: 2px 0 0 0; font-size: 0.85rem;'>Confidence Index: {forecast['confidence']:.0f}%</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-# ── MAP ──────────────────────────────────────────────────────────────────────
-with col_map:
-    st.markdown('<div class="section-label">📍 Live Risk Intelligence Map</div>', unsafe_allow_html=True)
-
-    m = folium.Map(
-        location=[12.9716, 77.5946],
-        zoom_start=11,
-        tiles="CartoDB positron",
-        prefer_canvas=True,
-    )
-
-    # Historical event density heatmap
-    # NOTE: assign() adds a column — must explicitly select 3 cols for HeatMap
-    heat_data = (
-        df[["latitude", "longitude", "duration_minutes"]]
-        .dropna()
-        .assign(weight=lambda x: x["duration_minutes"].clip(0, 400) / 400)
-        [["latitude", "longitude", "weight"]]
-        .values.tolist()
-    )
-    if heat_data:
-        HeatMap(
-            heat_data,
-            radius=18,
-            blur=22,
-            max_zoom=13,
-            gradient={"0.2": "#3b82f6", "0.5": "#f59e0b", "0.8": "#ef4444"},
-        ).add_to(m)
-
-    # KMeans cluster centers — sized and colored by risk
-    for idx, row in cluster_centers.iterrows():
-        if pd.notna(row.latitude) and pd.notna(row.longitude):
-            folium.CircleMarker(
-                location=[row.latitude, row.longitude],
-                radius=9,
-                color="#7c3aed",
-                fill=True,
-                fill_color="#7c3aed",
-                fill_opacity=0.6,
-                popup=folium.Popup(f"Risk Cluster {idx + 1}", max_width=120),
-                tooltip=f"Cluster {idx + 1} — historical hotspot",
-            ).add_to(m)
-
-    # Overlay submitted incidents
-    severity_color_map = {
-        "Critical": "#ef4444",
-        "Moderate": "#f59e0b",
-        "Low":      "#22c55e",
-    }
-    for inc in st.session_state.incidents:
-        lat, lon = inc["coords"]
-        color    = severity_color_map[inc["label"]]
-
-        # Pulse ring
-        folium.Circle(
-            location=[lat, lon],
-            radius=800 + inc["severity"] * 150,
-            color=color,
-            fill=True,
-            fill_color=color,
-            fill_opacity=0.10,
-            weight=2,
-        ).add_to(m)
-
-        # Event marker
-        folium.CircleMarker(
-            location=[lat, lon],
-            radius=10,
-            color=color,
-            fill=True,
-            fill_color=color,
-            fill_opacity=0.9,
-            popup=folium.Popup(
-                f"<b>#{inc['id']} {inc['cause'].replace('_',' ').title()}</b><br>"
-                f"Severity: {inc['severity']}/10 ({inc['label']})<br>"
-                f"Junction: {inc['junction']}<br>"
-                f"Time: {inc['time']}",
-                max_width=220,
-            ),
-            tooltip=f"#{inc['id']} — {inc['label']} ({inc['severity']}/10)",
-        ).add_to(m)
-
-        # Barricade markers
-        for i, (blat, blon) in enumerate(inc["route"].get("barricades", []), 1):
-            folium.Marker(
-                location=[blat, blon],
-                icon=folium.DivIcon(
-                    html=f'<div style="font-size:16px;margin-top:-8px;">🚧</div>',
-                    icon_size=(24, 24),
-                    icon_anchor=(12, 12),
-                ),
-                tooltip=f"Barricade Point {i}",
-            ).add_to(m)
-
-        # Diversion route polyline
-        route_coords = inc["route"].get("primary_route", [])
-        if route_coords:
-            folium.PolyLine(
-                locations=route_coords,
-                color="#2563eb",
-                weight=4,
-                opacity=0.75,
-                dash_array="8 4",
-                tooltip=f"Diversion: {inc['route'].get('name','Alt Route')}",
-            ).add_to(m)
-
-    st_folium(m, use_container_width=True, height=520, returned_objects=[])
-
-# ── INCIDENT FEED ─────────────────────────────────────────────────────────────
-with col_feed:
-    st.markdown('<div class="section-label">📋 Incident Feed</div>', unsafe_allow_html=True)
-
-    if not st.session_state.incidents:
-        st.markdown(
-            '<div class="empty-feed">Submit an incident from the sidebar to see it appear here.</div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        for inc in st.session_state.incidents[:6]:   # show latest 6
-            color  = severity_color_map[inc["label"]]
-            badge_cls = inc["label"].lower()
-
-            deploy_html = "".join(
-                f'<span class="deploy-tag">{p}</span>'
-                for p in inc["resources"]["deployment_positions"]
-            )
-
-            st.markdown(
-                f"""
-                <div class="incident-card" style="border-left: 4px solid {color};">
-                    <div class="inc-header">
-                        <span class="inc-id">#{inc['id']}</span>
-                        <span class="inc-cause">{inc['cause'].replace('_',' ').title()}</span>
-                        <span class="badge badge-{badge_cls}">{inc['label']}</span>
-                        <span class="inc-time">{inc['time']}</span>
-                    </div>
-                    <div class="inc-junction">📍 {inc['junction']} — {inc['corridor']}</div>
-                    <div class="inc-reasoning">🤖 {inc['reasoning']}</div>
-                    <div class="inc-resources">
-                        👮 <b>{inc['resources']['personnel']}</b> officers &nbsp;
-                        🚧 <b>{inc['resources']['barricades']}</b> barricades
-                    </div>
-                    <div class="deploy-row">{deploy_html}</div>
-                    <div class="diversion-note">
-                        🔀 <b>Diversion:</b> {inc['route'].get('name', 'See map')}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-# ─────────────────────────────────────────────────────────────────────────────
-# ACTION PLAN PANEL (shows only when an incident exists)
-# ─────────────────────────────────────────────────────────────────────────────
-if st.session_state.last_incident:
-    inc = st.session_state.last_incident
-    st.markdown("---")
-    st.markdown('<div class="section-label">⚡ Active Response Plan — Most Recent Incident</div>', unsafe_allow_html=True)
-
-    color = severity_color_map[inc["label"]]
-    p1, p2, p3 = st.columns([1, 2, 2])
-
-    with p1:
-        # Severity gauge using plotly
-        fig = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=inc["severity"],
-            title={"text": "Severity Score", "font": {"size": 13}},
-            gauge={
-                "axis": {"range": [0, 10], "tickwidth": 1},
-                "bar":  {"color": color},
-                "steps": [
-                    {"range": [0, 4],  "color": "#dcfce7"},
-                    {"range": [4, 7],  "color": "#fef9c3"},
-                    {"range": [7, 10], "color": "#fee2e2"},
-                ],
-                "threshold": {
-                    "line": {"color": color, "width": 3},
-                    "value": inc["severity"],
-                },
-            },
-            number={"suffix": "/10", "font": {"size": 24}},
-        ))
-        fig.update_layout(
-            height=220,
-            margin=dict(t=30, b=10, l=20, r=20),
-            paper_bgcolor="rgba(0,0,0,0)",
-            font_color="#374151",
-        )
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})  # noqa: deprecated but stable on 1.35
-
-    with p2:
-        st.markdown("**Deployment Breakdown**")
-        deploy = inc["resources"]["deployment_positions"]
-        if deploy:
-            for pos in deploy:
-                st.markdown(f"- {pos}")
-        else:
-            st.markdown("_No specific positions mapped._")
-
-        if inc["requires_closure"]:
-            st.markdown(
-                '<span class="badge badge-critical" style="font-size:12px;">⚠️ Road Closure Required</span>',
-                unsafe_allow_html=True,
-            )
-
-        st.markdown("**What-If Comparison**")
-        base_s  = inc["severity"]
-        wi_s    = wi_severity
-        delta   = wi_s - base_s
-        delta_s = f"+{delta}" if delta > 0 else str(delta)
-        delta_c = "#ef4444" if delta > 0 else "#22c55e"
-        st.markdown(
-            f'<div class="whatif-compare">'
-            f'Submitted plan: <b>{base_s}/10</b> &nbsp;→&nbsp; '
-            f'Simulated scenario: <b style="color:{delta_c};">{wi_s}/10 ({delta_s})</b>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-
-    with p3:
-        st.markdown("**Diversion Route**")
-        route = inc["route"]
-        st.markdown(f"🔵 **Primary:** {route.get('name', 'Not specified')}")
-        if route.get("alternate_name"):
-            st.markdown(f"🟡 **Alternate:** {route['alternate_name']}")
-        st.markdown(f"🚧 **Barricade points:** {len(route.get('barricades', []))}")
-
-        st.markdown("**Timeline Estimate**")
-        avg_dur = junction_history.get(inc["junction"], 60)
-        clear_time = int(avg_dur * (0.7 + inc["severity"] * 0.06))
-        st.markdown(f"⏱ Expected clear time: **{clear_time} min**")
-        st.markdown(f"📊 Based on {inc['junction']} historical avg: {avg_dur:.0f} min")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CORRIDOR RISK CHART (always visible, from dataset analysis)
-# ─────────────────────────────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown('<div class="section-label">📊 Corridor Risk Intelligence (Historical)</div>', unsafe_allow_html=True)
 
-chart_col1, chart_col2 = st.columns(2)
+# Row 2: Geospatial Mapping and Intelligence Explanations
+col_map, col_intel = st.columns([1.6, 1.0])
 
-with chart_col1:
-    sorted_corr = sorted(corridor_risk.items(), key=lambda x: x[1], reverse=True)[:8]
-    corr_names  = [c[0][:18] for c in sorted_corr]
-    corr_vals   = [c[1] for c in sorted_corr]
-    bar_colors  = ["#ef4444" if v > 120 else "#f59e0b" if v > 60 else "#22c55e" for v in corr_vals]
+with col_map:
+    st.subheader("🌐 Spatial Impact Telemetry & Diversions")
+    
+    junc_lat, junc_lon = get_junction_coords(selected_junction)
+    m = folium.Map(location=[junc_lat, junc_lon], zoom_start=14, tiles="CartoDB dark_matter")
+    
+    # Target Event Marker
+    folium.CircleMarker(
+        location=[junc_lat, junc_lon],
+        radius=14,
+        popup=f"<b>Junction:</b> {selected_junction}<br><b>Threat Rank:</b> {severity_num}/10",
+        color=accent_color,
+        fill=True,
+        fill_color=accent_color,
+        fill_opacity=0.4
+    ).add_to(m)
+    
+    # Impact Radius Visualizer Bound
+    folium.Circle(
+        location=[junc_lat, junc_lon],
+        radius=forecast['affected_radius_km'] * 1000,
+        color="#38bdf8",
+        weight=1,
+        fill=True,
+        fill_color="#38bdf8",
+        fill_opacity=0.06
+    ).add_to(m)
+    
+    # Diversion Route Architecture Processing
+    route_meta = get_diversion_route(selected_corridor)
+    if route_meta and route_meta["primary_route"]:
+        folium.PolyLine(
+            locations=route_meta["primary_route"],
+            color="#22c55e",
+            weight=5,
+            opacity=0.85,
+            tooltip=f"Primary Diversion: {route_meta['name']}"
+        ).add_to(m)
+        
+        # Add entry/exit marker indicators for barricades
+        for idx, bar_point in enumerate(route_meta["barricades"]):
+            folium.Marker(
+                location=bar_point,
+                icon=folium.Icon(color="orange", icon="ban", prefix="fa"),
+                popup=f"Barricade Deployment Checkpoint Node #{idx + 1}"
+            ).add_to(m)
+            
+    # Overlay localized structural heatmap to give full tactical context
+    if not df_clean.empty:
+        heat_data = df_clean[["latitude", "longitude"]].dropna().head(40).values.tolist()
+        HeatMap(heat_data, radius=15, blur=10, min_opacity=0.3).add_to(m)
+        
+    st_folium(m, width="100%", height=420, returned_objects=[])
 
-    fig2 = go.Figure(go.Bar(
-        x=corr_vals,
-        y=corr_names,
-        orientation="h",
-        marker_color=bar_colors,
-        text=[f"{v:.0f} min" for v in corr_vals],
-        textposition="outside",
-    ))
-    fig2.update_layout(
-        title="Avg Resolution Time by Corridor",
-        title_font_size=13,
-        xaxis_title="Minutes",
-        height=300,
-        margin=dict(t=40, b=20, l=10, r=60),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(size=11),
-        xaxis=dict(gridcolor="#e5e7eb", gridwidth=0.5),
-        yaxis=dict(gridcolor="rgba(0,0,0,0)"),
+with col_intel:
+    st.subheader("🧠 Engine Diagnostics & Signals")
+    
+    # Diagnostic narrative generation output
+    reasoning_string = generate_reasoning_text(event_cause, selected_junction, current_hour, severity_num, junction_history)
+    st.info(reasoning_string)
+    
+    st.markdown("##### Core Predictive Drivers")
+    for driver in forecast["drivers"]:
+        st.markdown(f"🏷️ `{driver}`")
+        
+    st.markdown("##### Historical Corridor Matrix Match")
+    explain_points = build_explainability_points(
+        forecast, event_type, event_cause, current_hour, selected_junction, selected_corridor, requires_closure, corridor_vulnerability, df_clean
     )
-    st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})  # noqa
+    for pt in explain_points:
+        st.markdown(f"• <span style='font-size:0.88rem; color:#cbd5e1;'>{pt}</span>", unsafe_allow_html=True)
 
-with chart_col2:
-    cause_counts = (
-        df["event_cause_category"]
-        .value_counts()
-        .reset_index()
-        .rename(columns={"index": "cause", "event_cause_category": "count"})
-    )
-    if "cause" not in cause_counts.columns:
-        cause_counts.columns = ["cause", "count"]
+st.markdown("---")
 
-    fig3 = go.Figure(go.Pie(
-        labels=cause_counts["cause"],
-        values=cause_counts["count"],
-        hole=0.48,
-        marker_colors=["#3b82f6","#f59e0b","#ef4444","#22c55e","#8b5cf6","#ec4899","#06b6d4"],
-        textinfo="label+percent",
-        textfont_size=11,
-    ))
-    fig3.update_layout(
-        title="Event Cause Distribution",
-        title_font_size=13,
-        height=300,
-        margin=dict(t=40, b=10, l=10, r=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        showlegend=False,
-    )
-    st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})  # noqa
+# Row 3: Resource Allocations and Optimization Playbooks
+st.subheader("⚡ Automated Tactical Resource Optimization")
+opts_plans = resource_optimization(forecast, corridor_vulnerability)
+
+p1, p2, p3 = st.columns(3)
+with p1:
+    render_plan_card("Plan Alpha: Minimum Safe", opts_plans["Minimum safe"], "#94a3b8")
+with p2:
+    render_plan_card("Plan Bravo: Recommended Control", opts_plans["Recommended"], "#6366f1")
+with p3:
+    render_plan_card("Plan Charlie: Aggressive Suppression", opts_plans["Aggressive"], "#ec4899")
+
+# Row 4: Sequence Deployment Incident Timeline
+st.markdown("### ⏱️ Sequential Operational Response Timeline")
+manpower_alloc = manpower_engine(severity_num, event_type, selected_junction, selected_corridor)
+timeline_events = build_incident_timeline(forecast, manpower_alloc)
+
+# Constructing an analytical timeline workflow widget component layout
+cols_timeline = st.columns(len(timeline_events))
+for index, step_data in enumerate(timeline_events):
+    with cols_timeline[index]:
+        st.markdown(
+            f"""
+            <div style="
+                background: rgba(30, 41, 59, 0.3);
+                border-top: 3px solid {accent_color if index == 0 else '#38bdf8'};
+                border-radius: 8px;
+                padding: 12px;
+                text-align: left;
+                min-height: 140px;
+            ">
+                <span style="color:#6366f1; font-weight:700; font-size:0.8rem;">T + {step_data['minute']} MIN</span>
+                <h5 style="margin: 4px 0; color:#f8fafc; font-size:0.95rem;">{step_data['step']}</h5>
+                <p style="margin:0; font-size:0.78rem; color:#94a3b8; line-height:1.3;">{step_data['detail']}</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FOOTER
+# FOOTER STATISTICAL TELEMETRY
 # ─────────────────────────────────────────────────────────────────────────────
+st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown(
-    '<div class="footer">Gridlock v0.2 — Day 2 Build &nbsp;|&nbsp; '
-    'Powered by Bengaluru historical event data (8,173 incidents) &nbsp;|&nbsp; '
-    'Built for Smart City Hackathon</div>',
-    unsafe_allow_html=True,
+    f"""
+    <div style="text-align: center; color: #475569; font-size: 0.75rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px;">
+        Control Layer Live Base Tracking • Corridor Fragility Profile Rank Cache Hash Active
+    </div>
+    """, 
+    unsafe_allow_html=True
 )
