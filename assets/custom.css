@@ -6,7 +6,7 @@
 /* Change the main app background */
 .stApp, .main, div[data-testid="stAppViewContainer"] {
     background: radial-gradient(circle at top left, #E4580B, #114AB1)!important;
-    color: #e2e8f0;
+    color: #6793AC;
 }
 
 
@@ -26,15 +26,15 @@
 
 /* ── Sidebar ───────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: #060323 !important;
+    background: #E4580B !important;
 }
 [data-testid="stSidebar"] * {
-    color: #959697 !important;
+    color: #6793AC !important;
 }
 [data-testid="stSidebar"] .stSelectbox label,
 [data-testid="stSidebar"] .stSlider label,
 [data-testid="stSidebar"] .stCheckbox label {
-    color: #94a3b8 !important;
+    color: #6793AC !important;
     font-size: 12px !important;
     text-transform: uppercase;
     letter-spacing: 0.05em;
