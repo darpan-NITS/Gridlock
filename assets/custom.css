@@ -26,8 +26,18 @@
 
 /* ── Sidebar ───────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: #04153b !important; /* Sleek, deep dark navy-slate */
-    border-right: 1px solid #334155 !important;
+    background: linear-gradient(
+        180deg,
+        #0f172a 0%,
+        #111827 40%,
+        #1e1b4b 100%
+    ) !important;
+
+    border-right: 2px solid rgba(56,189,248,0.15);
+
+    box-shadow:
+        8px 0 32px rgba(0,0,0,0.45),
+        inset -1px 0 rgba(255,255,255,0.03);
 }
 [data-testid="stSidebar"] * {
     color: #c4c8ce !important; /* Clean administrative gray */

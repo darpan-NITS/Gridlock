@@ -11,3 +11,5 @@ dist/
 
 # Large data file bans
 *.ipynb
+
+.streamlit/secrets.toml
