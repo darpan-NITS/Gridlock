@@ -9,7 +9,7 @@ import streamlit as st
 from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 # ── WORKAROUND FOR HTTPX 0.28+ COMPATIBILITY ISSUE ────────────────────────────
-import groq as Groq
+import groq
 from groq._base_client import SyncHttpxClientWrapper
 
 class CustomHttpxClientWrapper(SyncHttpxClientWrapper):
