@@ -8,22 +8,37 @@ import plotly.graph_objects as go
 import streamlit as st
 from folium.plugins import HeatMap
 from streamlit_folium import st_folium
-# ── WORKAROUND FOR HTTPX 0.28+ COMPATIBILITY ISSUE ────────────────────────────
+
+# ── STEP 1: PAGE CONFIG (Must be the absolute first Streamlit call) ──────────
+st.set_page_config(
+    page_title="Gridlock Hackathon— Traffic Command Center Dashboard",
+    page_icon="🚦",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# ── STEP 2: COMPLETE HTTPX 0.28+ COMPATIBILITY PATCH ──────────────────────────
 import groq
+import groq._base_client
+import groq._client
 from groq._base_client import SyncHttpxClientWrapper
 
 class CustomHttpxClientWrapper(SyncHttpxClientWrapper):
     def __init__(self, *args, **kwargs):
-        kwargs.pop("proxies", None)  # Strip out the unsupported argument safely
+        kwargs.pop("proxies", None)  # Strips out the unsupported argument completely
         super().__init__(*args, **kwargs)
 
-# Inject the patch into the groq base module before instantiation
+# Overwrite both module locations to guarantee the client picks it up
 groq._base_client.SyncHttpxClientWrapper = CustomHttpxClientWrapper
+groq._client.SyncHttpxClientWrapper = CustomHttpxClientWrapper
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Now initialize your client as normal
+from groq import Groq
+
+# ── STEP 3: INITIALIZE GLOBAL CLIENT SAFELY ──────────────────────────────────
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
+# ── STEP 4: IMPORT DATA PIPELINES & MODEL UTILS ──────────────────────────────
 from utils.data_processor import compute_kpi_stats, engineer_features, load_and_clean_data
 from utils.models import (
     DIVERSION_ROUTES,
@@ -43,16 +58,7 @@ from utils.models import (
     whatif_score,
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PAGE CONFIG  (must be the very first Streamlit call)
-# ─────────────────────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Gridlock Hackathon— Traffic Command Center Dashboard",
-    page_icon="🚦",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
+# ── STEP 5: LOAD CUSTOM LAYOUT STYLES ────────────────────────────────────────
 css_path = Path("assets/custom.css")
 if css_path.exists():
     st.markdown(f"<style>{css_path.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
