@@ -8,7 +8,21 @@ import plotly.graph_objects as go
 import streamlit as st
 from folium.plugins import HeatMap
 from streamlit_folium import st_folium
-from groq import Groq
+# ── WORKAROUND FOR HTTPX 0.28+ COMPATIBILITY ISSUE ────────────────────────────
+import groq as Groq
+from groq._base_client import SyncHttpxClientWrapper
+
+class CustomHttpxClientWrapper(SyncHttpxClientWrapper):
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("proxies", None)  # Strip out the unsupported argument safely
+        super().__init__(*args, **kwargs)
+
+# Inject the patch into the groq base module before instantiation
+groq._base_client.SyncHttpxClientWrapper = CustomHttpxClientWrapper
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Now initialize your client as normal
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
 from utils.data_processor import compute_kpi_stats, engineer_features, load_and_clean_data
 from utils.models import (
