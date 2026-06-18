@@ -282,7 +282,9 @@ with tab_map:
                 tooltip=f"Barricade Point {i}",
             ).add_to(m)
 
-        st_folium(m, use_container_width=True, height=500)
+        import streamlit.components.v1 as components
+        map_html = m._repr_html_()
+        components.html(map_html, height=500, scrolling=False)
 
     with col_feed:
         st.markdown('<div class="section-label"> AI Engine Diagnostics</div>', unsafe_allow_html=True)
