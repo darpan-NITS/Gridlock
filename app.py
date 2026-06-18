@@ -282,7 +282,7 @@ with tab_map:
                 tooltip=f"Barricade Point {i}",
             ).add_to(m)
 
-        st_folium(m, use_container_width=True, height=500, returned_objects=[])
+        st_folium(m, use_container_width=True, height=500)
 
     with col_feed:
         st.markdown('<div class="section-label"> AI Engine Diagnostics</div>', unsafe_allow_html=True)
