@@ -10,5 +10,4 @@ dist/
 .env
 
 # Large data file bans
-*.csv
 *.ipynb
