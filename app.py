@@ -9,15 +9,14 @@ import streamlit as st
 from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 
-# ── STEP 1: PAGE CONFIG (Must be the absolute first Streamlit call) ──────────
+
 st.set_page_config(
     page_title="Gridlock Hackathon— Traffic Command Center Dashboard",
-    page_icon="🚦",
+    page_icon="$$",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── STEP 2: COMPLETE HTTPX 0.28+ COMPATIBILITY PATCH ──────────────────────────
 import groq
 import groq._base_client
 import groq._client
@@ -25,20 +24,15 @@ from groq._base_client import SyncHttpxClientWrapper
 
 class CustomHttpxClientWrapper(SyncHttpxClientWrapper):
     def __init__(self, *args, **kwargs):
-        kwargs.pop("proxies", None)  # Strips out the unsupported argument completely
+        kwargs.pop("proxies", None)  
         super().__init__(*args, **kwargs)
 
-# Overwrite both module locations to guarantee the client picks it up
+
 groq._base_client.SyncHttpxClientWrapper = CustomHttpxClientWrapper
 groq._client.SyncHttpxClientWrapper = CustomHttpxClientWrapper
-# ──────────────────────────────────────────────────────────────────────────────
 
 from groq import Groq
-
-# ── STEP 3: INITIALIZE GLOBAL CLIENT SAFELY ──────────────────────────────────
 client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-
-# ── STEP 4: IMPORT DATA PIPELINES & MODEL UTILS ──────────────────────────────
 from utils.data_processor import compute_kpi_stats, engineer_features, load_and_clean_data
 from utils.models import (
     DIVERSION_ROUTES,
@@ -58,17 +52,12 @@ from utils.models import (
     whatif_score,
 )
 
-# ── STEP 5: LOAD CUSTOM LAYOUT STYLES ────────────────────────────────────────
+
 css_path = Path("assets/custom.css")
 if css_path.exists():
     st.markdown(f"<style>{css_path.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
 
 
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CONSTANTS
-# ─────────────────────────────────────────────────────────────────────────────
 SEV_COLOR = {"Critical": "#f60000", "Moderate": "#f59e0b", "Low": "#08fc61"}
 KNOWN_JUNCTIONS = [j for j in JUNCTION_COORDS if j != "Unknown"]
 KNOWN_CORRIDORS = [c for c in DIVERSION_ROUTES if c != "Non-corridor"]
@@ -96,12 +85,8 @@ def delta_color(d: float, invert: bool = False) -> str:
     positive_is_bad = not invert
     return (bad if d > 0 else good) if positive_is_bad else (good if d > 0 else bad)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# DATA PIPELINE  (cached — runs once, reuses on rerun)
-# ─────────────────────────────────────────────────────────────────────────────
 @st.cache_data(show_spinner="Loading historical dataset…")
 def load_pipeline():
-    # Try to load the real CSV; fall back to synthetic demo data gracefully.
     try:
         df = load_and_clean_data("Astram event data_anonymized - Astram event data_anonymizedb40ac87.csv")
         if df is None or df.empty:
@@ -138,21 +123,17 @@ def load_pipeline():
 
 df, junction_history, corridor_vuln, kpi_stats, cluster_centers = load_pipeline()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# SIDEBAR — COMMAND TOWER OPERATIONS CONTROL
-# ─────────────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    # ── HIGH-END COMMAND CENTER BRANDING BANNER ──
     st.markdown("""
         <div style="padding: 20px 16px; background: linear-gradient(135deg, rgba(15,23,42,0.6) 0%, rgba(30,41,59,0.9) 100%); border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 20px; border-left: 5px solid #E4580B; box-shadow: 0 4px 25px rgba(0,0,0,0.4);">
             <h2 style="margin:0; font-size:22px; color:#ffffff; font-weight:800; letter-spacing:-0.5px; display:flex; align-items:center; gap:10px;">
-                 GRIDLOCK
+                 DrishtiGridAI
             </h2>
             <div style="font-size:10.5px; color:#38bdf8; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin-top:4px;">EventFlow Copilot • Traffic Command Center</div>
         </div>
     """, unsafe_allow_html=True)
 
-    # ── GROUP 1: SPATIAL GRID COORDINATES ──
+    
     st.markdown('<p style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px; margin-top:4px;"> Spatial Grid Coordinates</p>', unsafe_allow_html=True)
     
     sel_junction = st.selectbox("Target Node Junction", KNOWN_JUNCTIONS, index=0)
@@ -160,7 +141,7 @@ with st.sidebar:
 
     st.markdown("<div style='margin: 1.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);'></div>", unsafe_allow_html=True)
 
-    # ── GROUP 2: OPERATIONAL PROFILE ──
+    
     st.markdown('<p style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;"> Operational Profile</p>', unsafe_allow_html=True)
     
     sel_cause = st.selectbox("Root Event Cause", CAUSES, index=0)
@@ -168,30 +149,25 @@ with st.sidebar:
     sel_duration = st.number_input("Target Window Horizon (min)", min_value=5, max_value=480, value=60, step=5)
 
     st.markdown("<div style='margin: 1.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);'></div>", unsafe_allow_html=True)
-
-    # ── GROUP 3: CONTEXTUAL CONSTRAINTS ──
     st.markdown('<p style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Contextual Constraints</p>', unsafe_allow_html=True)
     
     sel_hour = st.slider("Timeline Operational Hour", 0, 23, datetime.now().hour)
     sel_crowd = st.select_slider("Simulated Scale Constraints", CROWD_OPTIONS, value="Medium")
     sel_closure = st.toggle("Enforce Structural Road Closure", value=False)
 
-    # ── TACTICAL FOOTER DIAGNOSTIC BADGE ──
     st.markdown(f"""
         <div style="margin-top: 35px; padding: 12px; background: rgba(0, 0, 0, 0.2); border-radius: 10px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; gap: 4px;">
             <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #94a3b8; font-weight: 500;">
                 <span style="display:inline-block; width:6px; height:6px; background:#22c55e; border-radius:50%; box-shadow:0 0 6px #22c55e;"></span>
-                Telemetry Database Status
+                Database Status
             </div>
             <div style="font-size: 12px; color: #f1f5f9; font-weight: 600; padding-left: 12px;">
-                 {len(df):,} Historical Logs Mounted
+                 {len(df):,} Historical Logs have been Mounted
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CORE COMPUTATION — runs on every sidebar change
-# ─────────────────────────────────────────────────────────────────────────────
+
 forecast = forecast_traffic_impact(
     event_type=sel_type,
     event_cause=sel_cause,
@@ -212,15 +188,12 @@ sev_clr   = SEV_COLOR[sev_lbl]
 
 resources = manpower_engine(sev_num, sel_type, sel_junction, sel_corridor)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# HEADER
-# ─────────────────────────────────────────────────────────────────────────────
 st.markdown(
     f"""
     <div class="top-header">
         <div>
-            <span class="header-title">🚦 Gridlock</span>
-            <span class="header-sub">Predictive Incident Command — Bengaluru</span>
+            <span class="header-title">DrishtiGridAI</span>
+            <span class="header-sub">Predictive Incident Command Center-Bengaluru</span>
         </div>
         <div style="display:flex;align-items:center;gap:12px;">
             <span class="live-badge"><span class="live-dot"></span>LIVE</span>
@@ -233,9 +206,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# KPI STRIP
-# ─────────────────────────────────────────────────────────────────────────────
 k1, k2, k3, k4, k5 = st.columns(5)
 kpi_defs = [
     (k1, "Severity Index",       f"{sev_num}/10",                          sev_clr),
@@ -254,9 +224,6 @@ for col, label, value, color in kpi_defs:
 
 st.markdown("<div style='margin:1rem 0 0.5rem;'></div>", unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TABS — main navigation
-# ─────────────────────────────────────────────────────────────────────────────
 tab_map, tab_forecast, tab_whatif, tab_response, tab_corridors,tab_copilot = st.tabs([
     "  Live Map",
     "  Forecast & Intel",
@@ -266,36 +233,22 @@ tab_map, tab_forecast, tab_whatif, tab_response, tab_corridors,tab_copilot = st.
     "   AI Copilot ",
 ])
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 1 — LIVE MAP
-# ══════════════════════════════════════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 1 — LIVE MAP & RISK DIAGNOSTICS MATRIX
-# ══════════════════════════════════════════════════════════════════════════════
 with tab_map:
-    # Lift lookup to the top so both map and analytics columns share the same route instance safely
     route = get_diversion_route(sel_corridor)
     
     col_map, col_feed = st.columns([6, 4], gap="medium")
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # COLUMN 1: LIVE GEOSPATIAL INTELLIGENCE MAP (UPDATED V2)
-    # ══════════════════════════════════════════════════════════════════════════
     with col_map:
         st.markdown('<div class="section-label" style="margin-bottom: 12px;">Live Geospatial Risk Map</div>', unsafe_allow_html=True)
 
         jlat, jlon = get_junction_coords(sel_junction)
-        
-        # Build map with constrained, precise relative dimensions
         m = folium.Map(
             location=[jlat, jlon], 
-            zoom_start=14,  # Pulled in slightly closer for sharper local perspective
+            zoom_start=14, 
             tiles="CartoDB dark_matter",
             zoom_control=True,
             scrollWheelZoom=False
         )
-
-        # ── 1. INJECT CUSTOM CSS FOR SYSTEM RADAR PULSE CRITICAL NODE ──
+        
         pulse_animation_css = f"""
         <style>
             @keyframes tactical-pulse {{
@@ -332,7 +285,6 @@ with tab_map:
         """
         m.get_root().header.add_child(folium.Element(pulse_animation_css))
 
-        # ── 2. HISTORICAL HEATMAP (REDUCED OPACITY FOR HIGHER CONTRAST) ──
         heat_pts = (
             df[["latitude", "longitude", "duration_minutes"]].dropna()
             .assign(w=lambda x: x["duration_minutes"].clip(0, 400) / 400)
@@ -343,11 +295,10 @@ with tab_map:
                 heat_pts, 
                 radius=16, 
                 blur=20,
-                max_opacity=0.38,  # Dialed down to let vectors and secondary indicators pop
+                max_opacity=0.38,  
                 gradient={"0.2": "#1d4ed8", "0.45": "#f59e0b", "0.8": "#dc2626"}
             ).add_to(m)
 
-        # KMeans cluster points 
         for _, row in cluster_centers.iterrows():
             if pd.notna(row.latitude) and pd.notna(row.longitude):
                 folium.CircleMarker(
@@ -360,10 +311,10 @@ with tab_map:
                     tooltip="Historical incident node proximity anchor",
                 ).add_to(m)
 
-        # ── 3. TRIPLE TRAFFIC SHOCKWAVE PROPAGATION RINGS ──
+    
         base_radius_meters = max(forecast["affected_radius_km"] * 1000, 150.0)
         
-        # Inner Shockwave (High Density Core)
+        
         folium.Circle(
             location=[jlat, jlon],
             radius=base_radius_meters * 0.35,
@@ -374,7 +325,7 @@ with tab_map:
             fill_opacity=0.12,
         ).add_to(m)
         
-        # Mid Shockwave (Spillover Buffer Zone)
+        
         folium.Circle(
             location=[jlat, jlon],
             radius=base_radius_meters * 0.68,
@@ -384,7 +335,7 @@ with tab_map:
             opacity=0.4
         ).add_to(m)
         
-        # Outer Shockwave Edge (Maximum Kinetic Threshold Perimeter)
+       
         folium.Circle(
             location=[jlat, jlon],
             radius=base_radius_meters,
@@ -396,7 +347,7 @@ with tab_map:
             tooltip=f"Terminal impact horizon: {forecast['affected_radius_km']:.2f} km",
         ).add_to(m)
 
-        # ── 4. PULSING HARDWARE EPICENTER NODE MARKER ──
+        
         folium.Marker(
             location=[jlat, jlon],
             icon=folium.DivIcon(
@@ -414,7 +365,7 @@ with tab_map:
             tooltip=f"CRITICAL SYSTEM EPICENTER: {sel_junction}"
         ).add_to(m)
 
-        # Diversion route handling vectors
+        
         route = get_diversion_route(sel_corridor)
         if route.get("primary_route"):
             folium.PolyLine(
@@ -435,7 +386,7 @@ with tab_map:
                 tooltip=f"Barricade Intercept Node {i}",
             ).add_to(m)
 
-        # ── 5. CLEAN WRAPPER TO COMPRESS VERTICAL BLANK SPACE ──
+       
         map_html = m._repr_html_()
         styled_iframe_content = f"""
         <style>
@@ -447,17 +398,12 @@ with tab_map:
         {map_html}
         """
         
-        # Reduced height profile down from 500/535 to 445 to perfectly align columns 
-        # without overflowing into unseemly empty bottom regions
+        
         import streamlit.components.v1 as components
         components.html(styled_iframe_content, height=445, scrolling=False)
 
 
-    
-    # ── COLUMN 2: AUTOMATED DIAGNOSTICS & ANALYTICS CARDS ─────────────────────
     with col_feed:
-        
-        # ── CARD 1: AI Engine Diagnostics ──
         reasoning = generate_reasoning_text(
             sel_cause, sel_junction, sel_hour, sev_num, junction_history
         )
@@ -471,8 +417,6 @@ with tab_map:
 </p>
 </div>
         """, unsafe_allow_html=True)
-
-        # ── CARD 2: Forecast Drivers ──
         drivers_html = "".join([f'<span class="driver-tag" style="display:inline-block; margin-right:6px; margin-bottom:6px; background:rgba(251,146,60,0.15); color:#fb923c; border:1px solid rgba(251,146,60,0.3); padding:4px 10px; border-radius:8px; font-size:12px; font-weight:500;">{driver}</span>' for driver in forecast.get("drivers", [])])
         if not drivers_html:
             drivers_html = '<span style="color:#94a3b8; font-size:13px; font-style:italic;">No anomalous drivers triggered.</span>'
@@ -488,7 +432,6 @@ with tab_map:
 </div>
         """, unsafe_allow_html=True)
 
-        # ── CARD 3: Explainability & Core Logic ──
         expl_points = build_explainability_points(
             forecast=forecast,
             event_type=sel_type,
@@ -501,7 +444,6 @@ with tab_map:
             dataset=df,
         )
         
-        # Built as an explicit flat one-liner string string to block markdown code conversions
         pts_html = ""
         for i, pt in enumerate(expl_points, 1):
             pts_html += f'<div style="display:flex; gap:12px; margin-bottom:10px; align-items:start;"><span style="background:#34d399; color:#0f172a; font-weight:700; font-size:11px; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px;">{i}</span><span style="font-size:13.5px; color:#e2e8f0; line-height:1.4;">{pt}</span></div>'
@@ -518,7 +460,6 @@ with tab_map:
 </div>
         """, unsafe_allow_html=True)
 
-        # ── CARD 4: Tactical Diversion Protocol ──
         alt_route_html = f'<div style="font-size:12px; color:#cbd5e1; margin-top:4px;"><b>Alternative:</b> {route["alternate_name"]}</div>' if route.get("alternate_name") else ""
         st.markdown(f"""
 <div class="ui-card" style="margin-bottom:0px;">
@@ -535,10 +476,7 @@ with tab_map:
 </div>
 </div>
         """, unsafe_allow_html=True)
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 2 — FORECAST & INTEL (VISUALLY APPEALING METRIC CARDS)
-# ══════════════════════════════════════════════════════════════════════════════
+        
 with tab_forecast:
     st.markdown('<div class="section-label"> Traffic Impact Forecast Matrix</div>', unsafe_allow_html=True)
     st.caption(
@@ -547,10 +485,8 @@ with tab_forecast:
         f"({forecast['corridor_risk_label']})"
     )
 
-    # ── METRIC CORE: 5 DISTINCT HORIZONTAL CARDS ─────────────────────────────
+    
     fm1, fm2, fm3, fm4, fm5 = st.columns(5)
-
-    # Card 1: Severity Score
     with fm1:
         st.markdown(f"""
 <div class="ui-card" style="text-align: center; padding: 20px 10px !important; height: 100%;">
@@ -561,7 +497,6 @@ with tab_forecast:
 </div>
         """, unsafe_allow_html=True)
 
-    # Card 2: Expected Delay
     with fm2:
         st.markdown(f"""
 <div class="ui-card" style="text-align: center; padding: 20px 10px !important; height: 100%;">
@@ -572,7 +507,6 @@ with tab_forecast:
 </div>
         """, unsafe_allow_html=True)
 
-    # Card 3: Impact Radius
     with fm3:
         st.markdown(f"""
 <div class="ui-card" style="text-align: center; padding: 20px 10px !important; height: 100%;">
@@ -583,7 +517,7 @@ with tab_forecast:
 </div>
         """, unsafe_allow_html=True)
 
-    # Card 4: Recovery Time
+    
     with fm4:
         st.markdown(f"""
 <div class="ui-card" style="text-align: center; padding: 20px 10px !important; height: 100%;">
@@ -594,7 +528,7 @@ with tab_forecast:
 </div>
         """, unsafe_allow_html=True)
 
-    # Card 5: Model Confidence
+   
     with fm5:
         st.markdown(f"""
 <div class="ui-card" style="text-align: center; padding: 20px 10px !important; height: 100%;">
@@ -607,7 +541,7 @@ with tab_forecast:
 
     st.markdown("<div style='margin:1.2rem 0;'></div>", unsafe_allow_html=True)
 
-    # ── GAUGES MATRIX ────────────────────────────────────────────────────────
+   
     g_col, c_col = st.columns([1, 1])
     with g_col:
         fig_gauge = go.Figure(go.Indicator(
@@ -658,7 +592,6 @@ with tab_forecast:
         )
         st.plotly_chart(fig_conf, use_container_width=True, config={"displayModeBar": False})
 
-    # ── EXPLAINABILITY ENGINE FULL LOG PANEL ─────────────────────────────────
     st.markdown('<div class="section-label"> Why This Forecast</div>', unsafe_allow_html=True)
     ep_cols = st.columns(2)
     
@@ -676,14 +609,12 @@ with tab_forecast:
 </div>
             """, unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 3 — WHAT-IF SCENARIO SIMULATOR & VECTOR DELTAS
-# ══════════════════════════════════════════════════════════════════════════════
+
 with tab_whatif:
     st.markdown('<div class="section-label"> What-If Scenario Simulator</div>', unsafe_allow_html=True)
     st.caption("Manipulate ambient vectors below to model real-time queue shifts and recovery path disruptions against baseline operations.")
 
-    # ── CONTROL PANEL CONTROLS MATRIX ────────────────────────────────────────
+    
     wi_c1, wi_c2 = st.columns(2, gap="medium")
     with wi_c1:
         wi_cause = st.selectbox("Simulated Incident Cause", CAUSES, index=CAUSES.index(sel_cause), key="wi_cause")
@@ -694,7 +625,7 @@ with tab_whatif:
         wi_duration = st.number_input("Simulated Core Duration (min)", 5, 480, int(sel_duration), step=5, key="wi_dur")
         wi_closure = st.toggle("Simulated Structural Road Closure", value=sel_closure, key="wi_closure")
 
-    # Compute simulated telemetry models
+    
     sim_forecast = forecast_traffic_impact(
         event_type=wi_type,
         event_cause=wi_cause,
@@ -716,7 +647,7 @@ with tab_whatif:
     st.markdown("<div style='margin-top:1.5rem;'></div>", unsafe_allow_html=True)
     st.markdown('<div class="section-label"> Tactical Plan Comparison Matrix</div>', unsafe_allow_html=True)
 
-    # Assemble normalized metrics structures
+    
     metrics_compare = [
         ("Severity Index", f"{sev_num}/10 ({sev_lbl})", f"{sim_forecast['severity']}/10 ({sim_sev_lbl})", delta["severity"], False, "🚨"),
         ("Expected Queue Delay", fmt_min(forecast["expected_delay_min"]), fmt_min(sim_forecast["expected_delay_min"]), delta["delay_min"], False, "⏱️"),
@@ -725,8 +656,6 @@ with tab_whatif:
         ("Model Forecast Confidence", f"{forecast['confidence']:.0f}%", f"{sim_forecast['confidence']:.0f}%", delta["confidence"], True, "🛡️"),
     ]
 
-    # ── COMPARISON LEDGER GENERATOR ──
-    # Formatted strictly flat as an inline flex structure to protect layout conversions
     ledger_html = ""
     for metric, base_v, sim_v, d, higher_is_good, icon in metrics_compare:
         arr_icon = delta_arrow(d)
@@ -747,7 +676,6 @@ with tab_whatif:
 </div>
     """, unsafe_allow_html=True)
 
-    # ── RESOURCE PLANNING DEPLOYMENT CAPACITIES ──────────────────────────────
     st.markdown("<div style='margin-top:1.2rem;'></div>", unsafe_allow_html=True)
     st.markdown('<div class="section-label"> Resource Reallocation Profiler</div>', unsafe_allow_html=True)
     
@@ -783,13 +711,9 @@ with tab_whatif:
 </div>
         """, unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 4 — RESPONSE PLAN (CLEAN CHROMATIC TIMELINE & PLAN STRIPS)
-# ══════════════════════════════════════════════════════════════════════════════
 with tab_response:
     rp_left, rp_right = st.columns([5, 5], gap="medium")
 
-    # ── TIMELINE DISPATCH LEDGER ──────────────────────────────────────────────
     with rp_left:
         st.markdown('<div class="section-label"> Incident Response Timeline</div>', unsafe_allow_html=True)
         timeline = build_incident_timeline(forecast, resources)
@@ -799,7 +723,7 @@ with tab_response:
             clr       = "#22c55e" if i == 0 else "#3b82f6" if i == 1 else "#94a3b8"
             dot_style = f"background:{clr};"
             
-            # Formatted flat to the absolute margin to block markdown code conversions
+            
             st.markdown(f"""
 <div class="tl-row" style="display:flex; gap:16px; margin-bottom:0px;">
 <div class="tl-left" style="display:flex; flex-direction:column; align-items:center; width:20px; flex-shrink:0;">
@@ -816,7 +740,7 @@ with tab_response:
 </div>
             """, unsafe_allow_html=True)
 
-    # ── RESOURCE OPTIMIZATION ENGINE CARDS ────────────────────────────────────
+  
     with rp_right:
         st.markdown('<div class="section-label"> Resource Optimization Engine</div>', unsafe_allow_html=True)
         plans = resource_optimization(forecast, corridor_vuln)
@@ -859,14 +783,11 @@ with tab_response:
 </div>
             """, unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 5 — CORRIDOR INTELLIGENCE
-# ══════════════════════════════════════════════════════════════════════════════
+
 with tab_corridors:
     st.markdown('<div class="section-label"> Corridor Vulnerability Intelligence</div>', unsafe_allow_html=True)
 
     if corridor_vuln is not None and not corridor_vuln.empty:
-        # Bar chart
         top_n = corridor_vuln.head(10)
         bar_colors = [
             "#ef4444" if str(r) == "High" else "#f59e0b" if str(r) == "Moderate" else "#22c55e"
@@ -892,7 +813,7 @@ with tab_corridors:
         )
         st.plotly_chart(fig_bar, use_container_width=True, config={"displayModeBar": False})
 
-        # Cause donut chart
+       
         ch1, ch2 = st.columns([1, 1])
         with ch1:
             if "event_cause_category" in df.columns or "event_cause" in df.columns:
@@ -916,7 +837,7 @@ with tab_corridors:
                 st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
 
         with ch2:
-            # Peak hour heatmap by hour of day
+            
             if "hour_of_day" in df.columns:
                 hourly = df.groupby("hour_of_day").size().reindex(range(24), fill_value=0)
                 fig_hr = go.Figure(go.Bar(
@@ -939,7 +860,7 @@ with tab_corridors:
                 )
                 st.plotly_chart(fig_hr, use_container_width=True, config={"displayModeBar": False})
 
-        # Vulnerability table
+        
         st.markdown('<div class="section-label"> Full Corridor Ranking</div>', unsafe_allow_html=True)
         display_cols = ["rank","corridor","incidents","avg_duration_min","closure_rate_pct",
                         "peak_hour_rate_pct","vulnerability_score","risk_label","top_cause"]
@@ -947,7 +868,7 @@ with tab_corridors:
             [c for c in display_cols if c in corridor_vuln.columns]
         ].copy()
 
-        # Rename for readability
+        
         display_df = display_df.rename(columns={
             "rank": "Rank", "corridor": "Corridor", "incidents": "Events",
             "avg_duration_min": "Avg Duration (min)",
@@ -975,31 +896,28 @@ with tab_corridors:
         st.info("Corridor vulnerability data not available — ensure the dataset is loaded.")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 6 — AI COPILOT
-# ══════════════════════════════════════════════════════════════════════════════
+
 with tab_copilot:
     st.markdown('<div class="section-label"> Command Center AI Copilot</div>', unsafe_allow_html=True)
     st.caption("Ask your Groq-powered advisor for resource adjustments, mitigation protocols, or scenario breakdowns.")
 
-    # Initialize Groq Client safely using Streamlit Secrets
+    
     if "GROQ_API_KEY" not in st.secrets:
         st.info(" To activate the AI Copilot, please add your `GROQ_API_KEY` to your Streamlit Secrets.")
     else:
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-        # TRACK CONTEXT SWITCHES
-        # If the operator changes the junction in the sidebar, reset the chat state automatically
+        
+       
         if "current_tracked_junction" not in st.session_state:
             st.session_state.current_tracked_junction = sel_junction
 
         if st.session_state.current_tracked_junction != sel_junction:
             st.session_state.current_tracked_junction = sel_junction
-            # Wiping the array forces it to re-initialize with the fresh junction name below
             if "chat_messages" in st.session_state:
                 del st.session_state.chat_messages
 
-        # Initialize chat messages dynamically with the active junction context
+        
         if "chat_messages" not in st.session_state:
             st.session_state.chat_messages = [
                 {
@@ -1008,19 +926,18 @@ with tab_copilot:
                 }
             ]
 
-        # Display history
+      
         for msg in st.session_state.chat_messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        # Handle new user input
+       
         if user_prompt := st.chat_input("Ask about active routing or deployment strategy..."):
-            # Display user message immediately
             with st.chat_message("user"):
                 st.markdown(user_prompt)
             st.session_state.chat_messages.append({"role": "user", "content": user_prompt})
 
-            # System instruction injecting realtime dashboard context
+           
             system_context = f"""
             You are 'Gridlock Copilot', an expert tactical AI Assistant for the Bengaluru Metropolitan Traffic Operations.
             You help the user coordinate solutions for the currently active incident dashboard configuration:
@@ -1033,12 +950,11 @@ with tab_copilot:
             Be concise, highly professional, deeply knowledgeable about urban traffic management, and reference specific local parameters provided where applicable.
             """
 
-            # Construct the complete payload for Groq
+            
             api_messages = [{"role": "system", "content": system_context}]
             for msg in st.session_state.chat_messages:
                 api_messages.append({"role": msg["role"], "content": msg["content"]})
 
-            # Call the Groq API using a fast, active stable model
             try:
                 with st.spinner("Analyzing operational directives..."):
                     completion = client.chat.completions.create(
@@ -1049,7 +965,7 @@ with tab_copilot:
                     )
                     response_text = completion.choices[0].message.content
 
-                # Render response
+                
                 with st.chat_message("assistant"):
                     st.markdown(response_text)
                 st.session_state.chat_messages.append({"role": "assistant", "content": response_text})
@@ -1058,13 +974,11 @@ with tab_copilot:
             except Exception as e:
                 st.error(f"Failed to fetch insight from Groq: {e}")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# FOOTER
-# ─────────────────────────────────────────────────────────────────────────────
+
 st.markdown(
     f'<div class="footer">'
     f'Flipkart Gridlock Hackathon 2.0 · Final Build · {len(df):,} historical events · '
-    f'Bengaluru Metropolitan Traffic Operations · Built for Hackathon Purposes'
+    f'Bengaluru Metropolitan Traffic Operations · Built for Hackathon Purposes only'
     f'</div>',
     unsafe_allow_html=True,
 )
