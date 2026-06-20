@@ -1,411 +1,475 @@
-#  **Gridlock: EventFlow Copilot**
+<div align="center">
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Streamlit-Dark%20Dashboard-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" />
-  <img src="https://img.shields.io/badge/Hackathon-Prototype-7C3AED?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/Status-Prototype%20Phase-10B981?style=for-the-badge" />
-</p>
+# DrishtiGrid AI
+### EventFlow Copilot
 
-<p align="center">
-  <b>An AI-assisted traffic operations copilot that forecasts event-driven congestion and recommends manpower, barricades, and diversion plans.</b>
-</p>
+**A predictive command-center for event-driven traffic — forecasting congestion impact and recommending manpower, barricading, and diversion plans before any congestion even starts.**
 
-<p align="center">
-  <i>Built for Gridlock Hackathon 2.0 • Solo-built prototype • Focused on practical city-ops impact</i>
-</p>
+<br/>
 
----
+<img src="https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" />
+<img src="https://img.shields.io/badge/Python_3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+<img src="https://img.shields.io/badge/Groq-AI_Commander-F55036?style=for-the-badge&logo=lightning&logoColor=white" />
+<img src="https://img.shields.io/badge/Plotly-3F4F75?style=for-the-badge&logo=plotly&logoColor=white" />
+<img src="https://img.shields.io/badge/Folium-Maps-77B829?style=for-the-badge&logo=leaflet&logoColor=white" />
+<img src="https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white" />
 
-##  What this project does
+<br/>
 
-**Gridlock** turns raw incident data into an operator-friendly decision dashboard for traffic control rooms.
+<img src="https://img.shields.io/badge/Status-Live%20%26%20Deployed-22C55E?style=flat-square" />
+<img src="https://img.shields.io/badge/Dataset-8%2C173%20events-F59E0B?style=flat-square" />
+<img src="https://img.shields.io/badge/Build-Solo%20%C2%B7%20Hackathon-7C3AED?style=flat-square" />
+<img src="https://img.shields.io/badge/License-MIT-64748B?style=flat-square" />
 
-It helps answer the questions that matter in real life:
+<br/><br/>
 
-* **How risky is this event or incident?**
-* **Which corridor is most vulnerable?**
-* **How many officers and barricades should be deployed?**
-* **What happens if crowd size or road closure conditions change?**
-* **Why is the system making this recommendation?**
+**[Live Demo](https://gridlock-dpz5lqmszbxvwpagjnsl25.streamlit.app/)** · **[Source](https://gridlock-dpz5lqmszbxvwpagjnsl25.streamlit.app/)** 
 
-Instead of just showing charts, the project behaves like a **mini traffic command center**.
+</div>
 
----
+<br/>
 
-##  Problem Statement
-
-### **Event-Driven Congestion (Planned & Unplanned)**
-
-Political rallies, festivals, sports events, construction activities, and sudden gatherings create localized traffic breakdowns.
-
-### Why it is hard today
-
-* Event impact is not quantified in advance.
-* Resource deployment is experience-driven.
-* No post-event learning system.
-
-### Product direction
-
-**How can historical and real-time data be used to forecast event-related traffic impact and recommend optimal manpower, barricading, and diversion plans?**
+<div align="center">
+<img src="https://img.shields.io/badge/-Live%20Map-1E293B?style=for-the-badge" />
+<img src="https://img.shields.io/badge/-Forecast%20%26%20Intel-1E293B?style=for-the-badge" />
+<img src="https://img.shields.io/badge/-What--If%20Simulator-1E293B?style=for-the-badge" />
+<img src="https://img.shields.io/badge/-Response%20Plan-1E293B?style=for-the-badge" />
+<img src="https://img.shields.io/badge/-Corridor%20Intel-1E293B?style=for-the-badge" />
+<img src="https://img.shields.io/badge/-AI%20Commander-1E293B?style=for-the-badge" />
+</div>
 
 ---
 
-##  Core Features
+##  Table of Contents
 
-###  Forecast the impact
-
-* Predict congestion severity
-* Estimate expected delay
-* Estimate recovery time
-* Display confidence / severity indicators
-
-###  Corridor risk intelligence
-
-* Rank corridors by vulnerability
-* Identify high-risk zones from historical patterns
-* Highlight repeated trouble corridors and hotspots
-
-###  What-if simulator
-
-* Test changes in crowd scale, duration, road closure, time of day, and event type
-* Compare submitted plan vs simulated scenario
-* See how the recommended response changes
-
-###  Explainable recommendations
-
-* Show why a corridor or event is considered high risk
-* Surface historical patterns behind the recommendation
-* Keep the logic readable and operational
-
-###  Response timeline
-
-* Incident detected
-* Officer dispatch
-* Barricade setup
-* Diversion active
-* Expected clearance
-
-###  Resource optimization
-
-* Minimum safe plan
-* Recommended plan
-* Aggressive plan
-* Officers and barricades per scenario
-* Expected recovery improvement
-
-###  AI Traffic Commander *(optional / if time permits)*
-
-* Ask questions like:
-
-  * Why is this corridor high risk?
-  * What happens if crowd increases by 30%?
-  * Why did the system recommend 5 officers?
-* Rule-based or LLM-assisted depending on build time
+- [Overview](#-overview)
+- [The Problem](#-the-problem)
+- [What DrishtiGrid AI Does](#-what-drishtigrid-does)
+- [Feature Walkthrough](#-feature-walkthrough)
+- [Dataset](#-dataset)
+- [System Architecture](#-system-architecture)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Getting Started](#-getting-started)
+- [Configuration](#-configuration)
+- [Design Philosophy](#-design-philosophy)
+- [Roadmap](#-roadmap)
+- [Acknowledgements](#-acknowledgements)
+- [License](#-license)
 
 ---
 
-##  Dataset Overview
+##  Overview
 
-The prototype is built using a Bengaluru incident / event operations dataset with **8,173 rows** and **46 columns**.
+**DrishtiGrid AI** is a live, deployed traffic command-center for Bengaluru that turns historical incident data into real-time operational intelligence. An operator enters a single incident — junction, cause, time, crowd scale — and Gridlock instantly returns a full forecast: severity, expected delay, impact radius, recovery time, and a confidence score, paired with a complete response plan.
 
-### Most useful fields
+It is built to feel like software a real control room would use — not a notebook exported to a dashboard.
 
-* `start_datetime`, `end_datetime`, `created_date`, `modified_datetime`
-* `latitude`, `longitude`
-* `event_type`, `event_cause`, `status`, `priority`
-* `requires_road_closure`
-* `corridor`, `junction`, `police_station`
-* `description`, `veh_type`, `reason_breakdown`
-* resolution-related fields like `closed_datetime`, `resolved_datetime`
+> **Answers DrishtiGrid AI gives an operator in seconds:**
+> How risky is this event? · Which corridor is most vulnerable right now? · How many officers and barricades do I need? · What happens if the crowd doubles? · *Why* is the system recommending this?
 
-### What the data tells us
+---
 
-* Most events are **unplanned**.
-* Common causes include **vehicle breakdown, construction, water logging, accident, tree fall, public events, processions, protests, and VIP movement**.
-* The dataset is sparse in some operational columns, so the app is designed to be **robust to missingness**.
+##  The Problem
+
+Bengaluru sees **900+ unplanned traffic events a month** — processions, VIP movement, vehicle breakdowns, waterlogging, protests, construction. Today, response is almost entirely reactive:
+
+| Pain Point | Today | With Gridlock |
+|---|---|---|
+| Forecasting impact | Based on operator experience | Computed from 8,173 historical events |
+| Resource deployment | Improvised on radio calls | Three-tier optimization (Minimum / Recommended / Aggressive) |
+| Scenario planning | No structured way to test "what if" | Live What-If Simulator with instant comparison |
+| Explaining a decision | Not explained | Plain-language reasoning grounded in real stats |
+| Diversion planning | Improvised on the ground | Pre-mapped corridor-specific routes with barricade points |
+
+---
+
+##  What DrishtiGrid AI Does
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+###  Forecasts impact
+Severity score, expected delay, affected radius, estimated recovery time, and a confidence score — all computed live from operator input cross-referenced against real historical data.
+
+</td>
+<td width="50%" valign="top">
+
+###  Ranks corridor risk
+Every corridor scored on incident frequency, average resolution time, road-closure rate, and peak-hour exposure — surfaced as a ranked vulnerability table.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+###  Simulates scenarios
+Change crowd scale, duration, road closure, event type, or hour of day and instantly see how severity, delay, and manpower needs shift — *before* deploying anyone.
+
+</td>
+<td width="50%" valign="top">
+
+###  Explains itself
+Every score ships with a plain-language reason — peak-hour effects, corridor history, cause-specific patterns — so recommendations are operational, not a black box.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+###  Plans the response
+A minute-by-minute incident timeline — detection → dispatch → barricade setup → diversion → clearance — generated for every incident.
+
+</td>
+<td width="50%" valign="top">
+
+###  Talks back
+A Groq-powered AI Traffic Commander answers operational questions in plain English, grounded entirely in the live forecast — not generic chat.
+
+</td>
+</tr>
+</table>
+
+---
+
+##  Feature Walkthrough
+
+<details open>
+<summary><b> Live Map</b> — spatial risk intelligence</summary>
+<br/>
+
+- Historical incident density rendered as a live heatmap
+- KMeans-clustered hotspots highlighting chronic risk zones
+- Submitted incident shown with severity-coded pulse ring + impact radius
+- Diversion route drawn as a polyline with barricade markers
+
+</details>
+
+<details>
+<summary><b> Forecast & Intel</b> — five-metric impact forecast</summary>
+<br/>
+
+| Metric | Computed From |
+|---|---|
+| Severity Score (0–10) | Rule engine + corridor history |
+| Expected Delay (min) | Queue propagation model |
+| Affected Radius (km) | Spatial spillover horizon |
+| Recovery Time (min) | Historical resolution patterns |
+| Confidence (%) | Count of similar historical events |
+
+Includes a full **explainability panel** — every forecast ships with the specific historical facts that produced it.
+
+</details>
+
+<details>
+<summary><b> What-If Simulator</b> — scenario comparison engine</summary>
+<br/>
+
+Adjust crowd scale, event duration, road closure, event type/cause, and hour of day. DrishtiGrid AI recomputes the full forecast live and shows a side-by-side table:
+
+```
+Metric            Current Plan   Simulated Scenario   Change
+Severity          6 / 10         9 / 10                ▲ +3
+Delay              62 min        118 min               ▲ +56
+Impact Radius      1.4 km        2.6 km                ▲ +1.2
+Recovery Time      85 min        146 min                ▲ +61
+Officers Needed    9             22                     ▲ +13
+```
+
+</details>
+
+<details>
+<summary><b> Response Plan</b> — timeline + resource optimization</summary>
+<br/>
+
+**Incident Timeline** — Detected → Dispatch → Barricade Setup → Diversion Active → Expected Clearance, with minute-level estimates.
+
+**Three resourcing tiers**, computed per incident:
+
+| Plan | Officers | Barricades | Use Case |
+|---|---|---|---|
+| 🟡 Minimum Safe | Lowest viable | Lowest viable | Hold the line |
+| 🔵 Recommended | Balanced | Balanced | Default control-room choice |
+| 🔴 Aggressive | Highest | Highest | Fastest possible clearance |
+
+</details>
+
+<details>
+<summary><b> Corridor Intelligence</b> — city-wide vulnerability ranking</summary>
+<br/>
+
+- Full ranked table of every corridor by vulnerability score (0–100)
+- Computed from incident frequency, avg. resolution time, closure rate, and peak-hour rate
+- Visualized as a horizontal bar chart + event-cause donut + hourly volume chart
+
+</details>
+
+<details>
+<summary><b> AI Traffic Commander</b> — conversational layer (Groq)</summary>
+<br/>
+
+A chat interface grounded in the **live** incident context — not a generic assistant. Ask things like:
+
+- *"Why is this corridor high risk?"*
+- *"What happens if crowd increases by 30%?"*
+- *"How many officers should I deploy and where?"*
+- *"Which corridor is most vulnerable right now?"*
+
+The system prompt injects the current forecast, resource plan, and corridor stats on every turn, so answers are numerically grounded, not hallucinated.
+
+</details>
+
+---
+
+## Dataset
+
+Built on a real Bengaluru traffic operations dataset.
+
+<div align="center">
+
+| | | |
+|---|---|---|
+| **8,173** rows | **46** columns | **9** event causes |
+
+</div>
+
+**Key fields used:** `start_datetime`, `end_datetime`, `latitude`, `longitude`, `corridor`, `junction`, `police_station`, `event_type`, `event_cause`, `status`, `priority`, `requires_road_closure`, `description`, `veh_type`, `reason_breakdown`, plus resolution fields like `closed_datetime` / `resolved_datetime`.
+
+**What the data tells us:** most events are unplanned; dominant causes are vehicle breakdown, construction, waterlogging, accidents, tree falls, public events, processions, protests, and VIP movement. Several operational fields are sparse — the pipeline is built to be robust to missingness rather than assuming clean labels.
+
+#### What's computed for real vs. what's simulated
+
+|  Computed for real |  Deliberately simulated |
+|---|---|
+| Junction & corridor historical averages (`groupby` on real data) | Diversion route geometry (realistic Bengaluru waypoints) |
+| KMeans clustering on lat/long for hotspot detection | Live real-time event feed (demo mode, no live sensors) |
+| Corridor vulnerability scoring (frequency, closure rate, peak-hour rate) | Severity weighting via an explainable rule engine, not opaque ML |
+
+This is an intentional choice — a transparent rule engine beats a black-box model trained on 8K sparse rows.
 
 ---
 
 ##  System Architecture
 
-```text
-Dataset → Cleaning & Feature Engineering → Risk Scoring Engine
-       → Corridor Vulnerability Model → What-if Simulator
-       → Explainability Layer → Response Planner
-       → Streamlit Command Center Dashboard
 ```
-
-### Logic layers
-
-* **Deterministic rules** for fast, stable recommendations
-* **Lightweight statistical scoring** for corridor risk
-* **Scenario simulation** for changing inputs
-* **Optional ML/LLM layer** for richer explanation and Q&A
-
----
-
-##  Why this project is worth building
-
-This is not a generic dashboard.
-It is a **decision-support product**.
-
-That matters because judges tend to reward projects that:
-
-* solve a concrete operational problem,
-* show clear reasoning,
-* and look usable by real people.
-
-This prototype focuses on:
-
-* **impact** over hype
-* **clarity** over complexity
-* **demo value** over research theater
+┌─────────────────────────────────────────────────────────────┐
+│                        DATA LAYER                           │
+│   8,173-row CSV → cleaning → feature engineering (pandas)   │
+└──────────────────────────────┬────────────────────────────────┘
+                                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    INTELLIGENCE LAYER                       │
+│  Rule engine · KMeans clustering · corridor vulnerability   │
+│  scoring · forecast model · resource optimization           │
+└──────────────────────────────┬────────────────────────────────┘
+                                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  CONVERSATIONAL LAYER                       │
+│        Groq LLM API · context-grounded system prompt        │
+└──────────────────────────────┬────────────────────────────────┘
+                                 ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   PRESENTATION LAYER                        │
+│   Streamlit · Folium maps · Plotly charts · custom CSS      │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ##  Tech Stack
 
-* **Frontend / App:** Streamlit
-* **Maps:** Leaflet / Folium / Map-based heatmap layer
-* **Data:** Pandas, NumPy
-* **Visualization:** Plotly / Matplotlib / Streamlit charts
-* **ML / scoring:** Scikit-learn or rule-based scoring
-* **Optional AI layer:** LLM-assisted Q&A for the command-center panel
+<div align="center">
 
----
+| Layer | Technology |
+|---|---|
+| **App framework** | [Streamlit](https://streamlit.io) `1.35.0` |
+| **Data processing** | pandas, NumPy |
+| **Maps** | Folium + `streamlit-folium`, HeatMap plugin |
+| **Charts** | Plotly (gauges, bar, pie, indicator charts) |
+| **ML** | scikit-learn (KMeans clustering) |
+| **Conversational AI** | [Groq](https://groq.com) API (LLM inference) |
+| **Styling** | Custom dark CSS theme (command-center aesthetic) |
 
-##  Screenshots
-
-> Add your best dashboard screenshots here.
-
-<p align="center">
-  <img src="assets/screenshot-home.png" width="900" alt="Dashboard home" />
-</p>
-
-<p align="center">
-  <img src="assets/screenshot-simulator.png" width="900" alt="What-if simulator" />
-</p>
-
-<p align="center">
-  <img src="assets/screenshot-risk.png" width="900" alt="Risk intelligence view" />
-</p>
-
----
-
-##  How it works
-
-### 1) Incident intake
-
-The user selects or enters:
-
-* event cause
-* event type
-* junction
-* corridor
-* hour of day
-* road closure flag
-
-### 2) Forecast generation
-
-The app computes or estimates:
-
-* severity score
-* delay minutes
-* recovery estimate
-* vulnerability score
-
-### 3) Response planning
-
-The system recommends:
-
-* officer allocation
-* barricade count
-* diversion strategy
-* action priority
-
-### 4) Simulation
-
-The what-if panel changes the assumptions and updates the response plan.
-
-### 5) Explainability
-
-The app shows why the event is high risk using historical and contextual signals.
-
----
-
-##  Feature Highlights
-
-### Live Risk Intelligence Map
-
-A visual hotspot view showing incident density and corridor-level pressure.
-
-### Historical Corridor Intelligence
-
-Ranks roads by average resolution time, closure rate, and repeated disruption patterns.
-
-### Scenario Comparison
-
-Shows submitted plan vs simulated scenario side by side.
-
-### Control Room Response Card
-
-Summarizes the action plan in a format that feels useful to an operator.
-
-### Post-event learning *(future scope)*
-
-Compare predicted vs actual impact to improve future response planning.
-
----
-
-## Metrics / Impact Targets
-
-These are prototype targets, not production claims.
-
-* Reduce manual decision time for event response planning
-* Improve prioritization of high-risk corridors
-* Make recommendations explainable and operational
-* Help users compare multiple response plans quickly
+</div>
 
 ---
 
 ##  Project Structure
 
 ```text
-.
-├── app.py
-├── data/
-│   └── astram_event_data.csv
+gridlock-eventflow-copilot/
+├── app.py                     # Main Streamlit app — 6 tabs, all UI logic
+├── requirements.txt           # Python dependencies
+├── packages.txt                # System-level deps (zlib, libjpeg)
+├── .devcontainer/
+│   └── devcontainer.json       # Codespaces / dev container config
 ├── assets/
-│   ├── screenshot-home.png
-│   ├── screenshot-simulator.png
-│   └── screenshot-risk.png
+│   └── custom.css              # Command-center dark theme
 ├── utils/
-│   ├── data_processing.py
-│   ├── scoring.py
-│   ├── simulator.py
-│   └── explainability.py
-├── requirements.txt
+│   ├── data_processor.py       # Cleaning, feature engineering, KPI stats
+│   ├── models.py               # Forecast engine, vulnerability scoring,
+│   │                           # resource optimization, explainability,
+│   │__________________________ # diversion routes, timeline builder
+│           
+│                                
+├── Astram event data_anonymized...csv   # 8,173-row Bengaluru dataset
 └── README.md
 ```
 
 ---
 
-## Run Locally
+##  Getting Started
 
-### 1) Clone the repo
+### Prerequisites
+
+- Python 3.10+
+- A [Groq API key](https://console.groq.com/keys) (free tier available) for the AI Commander tab
+
+### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/gridlock-eventflow-copilot.git
+git clone https://github.com/darpan-NITS/Gridlock
 cd gridlock-eventflow-copilot
 ```
 
-### 2) Create a virtual environment
+### 2. Create and activate a virtual environment
 
 ```bash
 python -m venv .venv
-```
 
-### 3) Activate it
+# macOS / Linux
+source .venv/bin/activate
 
-**Windows**
-
-```bash
+# Windows
 .venv\Scripts\activate
 ```
 
-**macOS / Linux**
-
-```bash
-source .venv/bin/activate
-```
-
-### 4) Install dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 5) Run the app
+### 4. Set your Groq API key
+
+```bash
+# macOS / Linux
+export GROQ_API_KEY="your-key-here"
+
+# Windows (PowerShell)
+$env:GROQ_API_KEY="your-key-here"
+```
+
+Or add it to Streamlit secrets at `.streamlit/secrets.toml`:
+
+```toml
+GROQ_API_KEY = "your-key-here"
+```
+
+### 5. Run the app
 
 ```bash
 streamlit run app.py
 ```
 
+The app opens at `http://localhost:8501`.
+
+> **No CSV? No problem.** If the dataset file isn't found, Gridlock automatically falls back to a generated synthetic dataset with realistic Bengaluru junctions and corridors, so the demo never breaks.
+
 ---
 
-##  Requirements
+##  Configuration
 
-Example dependencies:
+| Variable | Required | Description |
+|---|---|---|
+| `GROQ_API_KEY` | For AI Commander tab | Powers the conversational layer. App works without it — only that tab is disabled. |
 
-```txt
-streamlit
-pandas
-numpy
-plotly
-folium
-streamlit-folium
-scikit-learn
-matplotlib
+Deployed via **Streamlit Community Cloud** — `packages.txt` and `.devcontainer/devcontainer.json` are included for GitHub Codespaces / cloud build compatibility.
+
+---
+
+##  Design Philosophy
+
+> Built like a product. Not a notebook.
+
+**What we prioritized**
+- Fast demo load time and a stable, deploy-ready build
+- Explainability over raw model accuracy
+- Decision support (three-tier plans, live simulation) over static dashboards
+- A real command-center visual language — dark theme, severity color-coding, live indicators
+
+**What we deliberately avoided**
+- Deep learning on a sparse 8K-row dataset (overfitting risk, zero explainability gain)
+- Fake precision — every number traces back to either real data or a stated rule
+- Decorative charts with no operational story
+- Features that look impressive in a demo but wouldn't survive a real control room
+
+---
+
+##  Roadmap
+
+<table>
+<tr>
+<th width="33%">🟡 Near-Term</th>
+<th width="33%">🔵 Mid-Term</th>
+<th width="33%">🟣 Long-Term</th>
+</tr>
+<tr valign="top">
+<td>
+
+- Live SMS / WhatsApp alerts to field officers on deployment
+- Post-event accuracy tracker — forecast vs. actual outcome
+- Downloadable PDF response brief for field teams
+
+</td>
+<td>
+
+- Integration with live Bengaluru Traffic Police data feeds
+- Real road-network routing (replacing hardcoded diversion paths)
+- Multi-incident correlation — detect cascading congestion
+
+</td>
+<td>
+
+- Learning loop: model recalibrates from post-event outcomes
+- Multi-city expansion beyond Bengaluru
+- Role-based access for control-room hierarchy
+
+</td>
+</tr>
+</table>
+
+---
+
+##  Acknowledgements
+
+- **Flipkart Gridlock Hackathon 2.0** for the problem statement
+- The Bengaluru traffic operations team behind the source dataset
+- The open-source Python ecosystem — Streamlit, pandas, scikit-learn, Folium, Plotly
+- [Groq](https://groq.com) for fast, low-latency LLM inference powering the AI Commander
+
+---
+
+##  License
+
+This project is submitted for hackathon demonstration purposes.
+
+```
+MIT License — feel free to fork, adapt, and build on this.
+Add a LICENSE file with the full text if open-sourcing beyond the hackathon.
 ```
 
 ---
 
-## Hackathon Design Choices
+<div align="center">
 
-### What I prioritized
+**DrishtiGrid AI — EventFlow Copilot**
+<br/>
+*From reactive to ready.*
 
-* Fast demo load time
-* Clear visual hierarchy
-* Real-world operations framing
-* Simple but believable intelligence
-* Solo-builder feasibility
+<br/>
 
-### What I intentionally avoided
+Made with consistency for Bengaluru's traffic control rooms
 
-* Over-engineered deep learning pipelines
-* Fake precision
-* Too many charts with no story
-* Features that are impressive but useless in a control-room setting
-
----
-
-## Roadmap
-
-### Done / in progress
-
-* Dashboard shell
-* Live heatmap
-* Incident feed
-* Historical corridor analytics
-* Resource planning section
-* What-if simulator
-
-### Next
-
-* Forecast panel
-* Corridor vulnerability ranking
-* Explainability cards
-* Response timeline
-* Better scenario comparison
-* Optional AI Q&A layer
-
----
-
-## Acknowledgements
-
-* **Flipkart Gridlock Hackathon 2.0** for the problem statement
-* Open-source Python ecosystem
-* Streamlit for making the prototype fast to build
-
----
-
-## Final Pitch
-
-**Gridlock: EventFlow Copilot** helps traffic teams forecast disruption, rank vulnerable corridors, and deploy the right response before congestion spirals out of control.
-
----
-
-## License
-
-This project is submitted for hackathon demonstration purposes. Add your preferred license if you plan to open-source it.
+</div>
