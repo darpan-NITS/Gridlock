@@ -44,8 +44,9 @@
 
 - [Overview](#-overview)
 - [The Problem](#-the-problem)
-- [What DrishtiGrid AI Does](#-what-drishtigrid-does)
+- [What DrishtiGrid AI Does](#-what-drishtigrid-ai-does)
 - [Feature Walkthrough](#-feature-walkthrough)
+- [Screenshots](#-screenshots)
 - [Dataset](#-dataset)
 - [System Architecture](#-system-architecture)
 - [Tech Stack](#-tech-stack)
