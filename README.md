@@ -222,6 +222,48 @@ The system prompt injects the current forecast, resource plan, and corridor stat
 
 ---
 
+##  Screenshots
+
+<p align="center">
+  <img src="assets/screenshots/screenshot-1.png" width="850" alt="Live Map — risk heatmap and diversion routing" />
+  <br/><sub><b>Live Map</b> — historical heatmap, KMeans hotspots, and active incident overlay</sub>
+</p>
+
+<br/>
+
+<p align="center">
+  <img src="assets/screenshots/screenshot-2.png" width="850" alt="Forecast & Intel panel" />
+  <br/><sub><b>Forecast & Intel</b> — five-metric impact forecast with explainability</sub>
+</p>
+
+<br/>
+
+<p align="center">
+  <img src="assets/screenshots/screenshot-3.png" width="850" alt="What-If Simulator comparison table" />
+  <br/><sub><b>What-If Simulator</b> — live scenario comparison</sub>
+</p>
+
+<br/>
+
+<p align="center">
+  <img src="assets/screenshots/screenshot-4.png" width="850" alt="Response Plan and timeline" />
+  <br/><sub><b>Response Plan</b> — incident timeline and 3-tier resourcing</sub>
+</p>
+
+<br/>
+
+<p align="center">
+  <img src="assets/screenshots/screenshot-5.png" width="850" alt="Corridor vulnerability ranking" />
+  <br/><sub><b>Corridor Intelligence</b> — city-wide vulnerability ranking</sub>
+</p>
+
+<br/>
+
+<p align="center">
+  <img src="assets/screenshots/screenshot-6.png" width="850" alt="AI Traffic Commander chat" />
+  <br/><sub><b>AI Commander</b> — Groq-powered operational Q&A</sub>
+</p>
+
 ## Dataset
 
 Built on a real Bengaluru traffic operations dataset.
