@@ -46,7 +46,7 @@ def _resolve_file_path(file_path: str) -> str:
         if direct.exists():
             return str(direct)
 
-    # Fallback: any CSV in common folders that looks like the dataset.
+    
     patterns = [
         str(Path.cwd() / "**" / "*.csv"),
         str(Path(__file__).resolve().parent.parent / "**" / "*.csv"),
@@ -64,12 +64,12 @@ def load_and_clean_data(file_path: str) -> pd.DataFrame:
     path = _resolve_file_path(file_path)
     df = pd.read_csv(path)
 
-    # Drop extremely sparse columns, but keep operational fields even if sparse.
+    
     null_pct = df.isnull().mean(numeric_only=False)
     drop_cols = [c for c in null_pct.index if null_pct[c] > 0.60 and c not in IMPORTANT_COLUMNS]
     df = df.drop(columns=drop_cols, errors="ignore").copy()
 
-    # Guarantee core columns exist.
+   
     for col in IMPORTANT_COLUMNS:
         if col not in df.columns:
             if col in {"requires_road_closure"}:
@@ -77,7 +77,7 @@ def load_and_clean_data(file_path: str) -> pd.DataFrame:
             else:
                 df[col] = np.nan
 
-    # Normalize common datetime fields.
+    
     for col in ["start_datetime", "end_datetime", "closed_datetime", "resolved_datetime", "created_date", "modified_datetime"]:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce", format="ISO8601")
@@ -129,7 +129,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     else:
         df["start_datetime"] = pd.NaT
 
-    # Prefer a true end time, but gracefully fall back to resolved/closed timestamps.
+    
     end_source = None
     for candidate in ["end_datetime", "resolved_datetime", "closed_datetime"]:
         if candidate in df.columns:
