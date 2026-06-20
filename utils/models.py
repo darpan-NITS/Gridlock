@@ -3,11 +3,6 @@ import pandas as pd
 from sklearn.cluster import KMeans
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# JUNCTION COORDINATE LOOKUP
-# Real Bengaluru junction GPS coordinates for top known junctions.
-# Fallback: dataset mean for unrecognised junctions.
-# ─────────────────────────────────────────────────────────────────────────────
 JUNCTION_COORDS = {
     "Silk Board Junction":     (12.9176, 77.6236),
     "Urvashi Junction":        (12.9184, 77.6048),
@@ -25,15 +20,9 @@ JUNCTION_COORDS = {
     "Bellary Road Junction":   (13.0218, 77.5970),
     "JP Nagar Junction":       (12.9068, 77.5848),
     "Jayanagar 4th Block":     (12.9304, 77.5820),
-    "Unknown":                 (12.9716, 77.5946),   # Bengaluru centre fallback
+    "Unknown":                 (12.9716, 77.5946),   
 }
 
-# ─────────────────────────────────────────────────────────────────────────────
-# DIVERSION ROUTE LOOKUP
-# Hardcoded realistic Bengaluru diversion routes per corridor.
-# Each route has: name, primary route (polyline coords), alternate name,
-# and barricade points.
-# ─────────────────────────────────────────────────────────────────────────────
 DIVERSION_ROUTES = {
     "Tumkur Road": {
         "name":          "Via Chord Road → Rajajinagar → Yeshwanthpur",
@@ -125,7 +114,7 @@ DIVERSION_ROUTES = {
         "primary_route": [],
         "barricades":    [],
     },
-    # ── Additional corridors found in the real dataset ──────────────────────
+   
     "Mysore Road": {
         "name":          "Via Kanakapura Road → JP Nagar → Ring Road",
         "alternate_name": "Via Magadi Road → Chord Road",
@@ -202,9 +191,6 @@ def get_diversion_route(corridor: str) -> dict:
     return DIVERSION_ROUTES.get(corridor, _DEFAULT_ROUTE)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CORE SCORING
-# ─────────────────────────────────────────────────────────────────────────────
 CAUSE_WEIGHTS = {
     "vip_movement":      5,
     "procession":        4,
@@ -258,9 +244,6 @@ def whatif_score(event_cause, event_type, hour, junction, junction_history,
     return max(0, min(10, round(adjusted)))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# MANPOWER ENGINE
-# ─────────────────────────────────────────────────────────────────────────────
 def manpower_engine(severity, event_type, junction, corridor) -> dict:
     """
     Returns personnel, barricades, and deployment positions.
@@ -279,7 +262,7 @@ def manpower_engine(severity, event_type, junction, corridor) -> dict:
 
     deployment = []
     if pd.notna(junction) and junction != "Unknown":
-        # Allocate more officers to primary junction for higher severity
+
         primary_count = max(2, personnel // 2)
         deployment.append(f"{primary_count} officers at {junction}")
         if severity > 5:
@@ -298,9 +281,7 @@ def manpower_engine(severity, event_type, junction, corridor) -> dict:
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# AI REASONING ENGINE
-# ─────────────────────────────────────────────────────────────────────────────
+
 CAUSE_LABELS = {
     "vip_movement":      "VIP movement events",
     "accident":          "Accident incidents",
@@ -363,9 +344,6 @@ def generate_reasoning_text(event_cause, junction, hour, severity, junction_hist
     return " ".join(parts)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CORRIDOR RISK
-# ─────────────────────────────────────────────────────────────────────────────
 def compute_corridor_risk(df: pd.DataFrame) -> dict:
     """Return avg resolution time per corridor (higher = more risk)."""
     if "corridor" not in df.columns or "duration_minutes" not in df.columns:
@@ -378,9 +356,6 @@ def compute_corridor_risk(df: pd.DataFrame) -> dict:
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# JUNCTION HISTORY + KMEANS (unchanged from Day 1, kept here for completeness)
-# ─────────────────────────────────────────────────────────────────────────────
 def compute_junction_history(df: pd.DataFrame) -> dict:
     return df.groupby("junction")["duration_minutes"].mean().to_dict()
 
@@ -395,9 +370,6 @@ def process_kmeans_centers(df: pd.DataFrame, k: int = 10) -> pd.DataFrame:
     return centers
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ADVANCED OPERATIONS LAYER
-# ─────────────────────────────────────────────────────────────────────────────
 def _safe_bool_series(series: pd.Series) -> pd.Series:
     if series.dtype == object:
         return series.astype(str).str.lower().isin(["true", "yes", "1", "y"])
@@ -470,14 +442,14 @@ def compute_corridor_vulnerability(df: pd.DataFrame) -> pd.DataFrame:
     if out.empty:
         return out
 
-    # Normalize and score.
+   
     out["incidents_norm"] = _minmax(out["incidents"])
     out["duration_norm"] = _minmax(out["avg_duration_min"])
     out["closure_norm"] = _minmax(out["closure_rate_pct"])
     out["peak_norm"] = _minmax(out["peak_hour_rate_pct"])
     out["cause_norm"] = _minmax(out["cause_diversity"])
 
-    # Balanced control-room weighting: frequency and resolution dominate.
+    
     out["vulnerability_score"] = (
         100
         * (
@@ -510,8 +482,6 @@ def categorize_cause(event_cause: str) -> str:
         return "unknown"
         
     cause = str(event_cause).lower().strip()
-    
-    # Maps specific triggers to broader operational categories
     mapping = {
         "vip_movement": "infrastructure_event",
         "procession": "public_event",
@@ -540,7 +510,6 @@ def _historical_support_score(df: pd.DataFrame, corridor: str, junction: str, ev
 
     count = int(mask.sum())
     if count == 0 and "event_cause_category" in df.columns:
-        # Fallback on category-level similarity.
         cat = categorize_cause(event_cause)
         mask = df["event_cause_category"].astype(str).str.lower().eq(str(cat).lower())
         count = int(mask.sum())
