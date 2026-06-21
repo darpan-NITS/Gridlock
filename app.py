@@ -12,27 +12,22 @@ from streamlit_folium import st_folium
 
 st.set_page_config(
     page_title="Gridlock Hackathon— Traffic Command Center Dashboard",
-    page_icon="$$",
+    page_icon="🚦",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-import groq
-import groq._base_client
-import groq._client
-from groq._base_client import SyncHttpxClientWrapper
-
-class CustomHttpxClientWrapper(SyncHttpxClientWrapper):
-    def __init__(self, *args, **kwargs):
-        kwargs.pop("proxies", None)  
-        super().__init__(*args, **kwargs)
-
-
-groq._base_client.SyncHttpxClientWrapper = CustomHttpxClientWrapper
-groq._client.SyncHttpxClientWrapper = CustomHttpxClientWrapper
-
 from groq import Groq
-client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+# NOTE: removed a legacy monkeypatch here that reached into groq's private
+# internals (groq._base_client.SyncHttpxClientWrapper) to work around an old
+# httpx/groq version conflict. Modern groq SDK versions don't need it, and if
+# a fresh dependency install pulls a newer groq release, that patch can crash
+# the entire app on import — before Streamlit even starts rendering.
+# Also removed the unguarded top-level `client = Groq(api_key=st.secrets[...])`
+# that used to live here — it crashed on startup if the secret was briefly
+# unavailable. The AI Copilot tab below creates `client` safely, behind a
+# secrets check, right where it's actually used.
+
 from utils.data_processor import compute_kpi_stats, engineer_features, load_and_clean_data
 from utils.models import (
     DIVERSION_ROUTES,
@@ -763,7 +758,6 @@ with tab_response:
             sev_eff = plan.get("severity_effect", "—")
             delay_eff = plan.get("delay_effect", "—")
 
-            # Upgraded container using unified layout system architecture to blend seamlessly
             st.markdown(f"""
 <div class="ui-card" style="border-left: 5px solid {clr} !important; padding:16px 20px !important; margin-bottom:14px;">
 <div class="plan-header" style="color:{clr}; font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.02em;">
@@ -936,6 +930,8 @@ with tab_copilot:
             with st.chat_message("user"):
                 st.markdown(user_prompt)
             st.session_state.chat_messages.append({"role": "user", "content": user_prompt})
+            # Keep only the last 12 messages (6 exchanges) — prevents unbounded RAM growth
+            st.session_state.chat_messages = st.session_state.chat_messages[-12:]
 
            
             system_context = f"""
@@ -950,9 +946,9 @@ with tab_copilot:
             Be concise, highly professional, deeply knowledgeable about urban traffic management, and reference specific local parameters provided where applicable.
             """
 
-            
+            # Only send the last 6 messages to Groq — bounds both memory and token cost
             api_messages = [{"role": "system", "content": system_context}]
-            for msg in st.session_state.chat_messages:
+            for msg in st.session_state.chat_messages[-6:]:
                 api_messages.append({"role": msg["role"], "content": msg["content"]})
 
             try:
@@ -969,6 +965,7 @@ with tab_copilot:
                 with st.chat_message("assistant"):
                     st.markdown(response_text)
                 st.session_state.chat_messages.append({"role": "assistant", "content": response_text})
+                st.session_state.chat_messages = st.session_state.chat_messages[-12:]
                 st.rerun()
 
             except Exception as e:
